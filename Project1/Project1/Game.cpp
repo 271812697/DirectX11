@@ -1,12 +1,16 @@
 
 #include "pch.h"
 #include "Game.h"
-
+#include"d3dUtil.h"
 extern void ExitGame() noexcept;
 
 using namespace DirectX;
 
-using Microsoft::WRL::ComPtr;
+D3D11_INPUT_ELEMENT_DESC inputlayout[3] = {
+    {"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0},
+    {"NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,12,D3D11_INPUT_PER_VERTEX_DATA,0},
+    {"COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,24,D3D11_INPUT_PER_VERTEX_DATA,0},
+};
 
 Game::Game() noexcept :
     m_window(nullptr),
@@ -33,6 +37,7 @@ void Game::Initialize(HWND window, int width, int height)
     m_timer.SetFixedTimeStep(true);
     m_timer.SetTargetElapsedSeconds(1.0 / 60);
     */
+    InitResoures();
 }
 
 // Executes the basic game loop.
@@ -42,15 +47,14 @@ void Game::Tick()
         {
             Update(m_timer);
         });
-
     Render();
+    Present();
 }
 
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer)
 {
     float elapsedTime = float(timer.GetElapsedSeconds());
-
     // TODO: Add your game logic here.
     elapsedTime;
 }
@@ -63,12 +67,11 @@ void Game::Render()
     {
         return;
     }
-
     Clear();
 
     // TODO: Add your rendering code here.
 
-    Present();
+   
 }
 
 // Helper method to clear the back buffers.
@@ -141,8 +144,8 @@ void Game::OnWindowSizeChanged(int width, int height)
 void Game::GetDefaultSize(int& width, int& height) const noexcept
 {
     // TODO: Change to desired default window size (note minimum size is 320x200).
-    width = 800;
-    height = 600;
+    width = 1000;
+    height = 800;
 }
 
 // These are the resources that depend on the device.
@@ -319,4 +322,24 @@ void Game::OnDeviceLost()
     CreateDevice();
 
     CreateResources();
+}
+
+void Game::InitShader()
+{
+    ComPtr<ID3DBlob> Blob;
+    CreateShaderFromFile(nullptr,L"VS.hlsl","main","vs_5_0",Blob.ReleaseAndGetAddressOf());
+    m_d3dDevice->CreateVertexShader(Blob->GetBufferPointer(), Blob->GetBufferSize(),nullptr,vShader.GetAddressOf());
+    m_d3dDevice->CreateInputLayout(inputlayout, ARRAYSIZE(inputlayout),Blob->GetBufferPointer(),Blob->GetBufferSize(),vInput.GetAddressOf());
+    CreateShaderFromFile(nullptr, L"PS.hlsl", "main", "ps_5_0", Blob.ReleaseAndGetAddressOf());
+    m_d3dDevice->CreatePixelShader(Blob->GetBufferPointer(), Blob->GetBufferSize(), nullptr, pShader.GetAddressOf());
+
+}
+
+void Game::InitPileLine()
+{
+}
+
+void Game::InitResoures()
+{
+    InitShader();
 }

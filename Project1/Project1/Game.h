@@ -7,43 +7,32 @@
 class Game
 {
 public:
-
     Game() noexcept;
     ~Game() = default;
-
     Game(Game&&) = default;
     Game& operator= (Game&&) = default;
 
     Game(Game const&) = delete;
     Game& operator= (Game const&) = delete;
-
     // Initialization and management
     void Initialize(HWND window, int width, int height);
-
     // Basic game loop
     void Tick();
-
     // Messages
     void OnActivated();
     void OnDeactivated();
     void OnSuspending();
     void OnResuming();
     void OnWindowSizeChanged(int width, int height);
-
     // Properties
     void GetDefaultSize(int& width, int& height) const noexcept;
-
 private:
-
     void Update(DX::StepTimer const& timer);
     void Render();
-
     void Clear();
     void Present();
-
     void CreateDevice();
     void CreateResources();
-
     void OnDeviceLost();
 
     // Device resources.
@@ -58,7 +47,23 @@ private:
     Microsoft::WRL::ComPtr<IDXGISwapChain1>         m_swapChain;
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView>  m_renderTargetView;
     Microsoft::WRL::ComPtr<ID3D11DepthStencilView>  m_depthStencilView;
-
     // Rendering loop timer.
     DX::StepTimer                                   m_timer;
+
+
+
+public:
+    void InitShader();
+    void InitPileLine();
+    void InitResoures();
+    template<class T>
+    using ComPtr= Microsoft::WRL::ComPtr<T>;
+    ComPtr<ID3D11PixelShader>pShader;
+    ComPtr<ID3D11VertexShader>vShader;
+    ComPtr<ID3D11InputLayout>vInput;
+    ComPtr<ID3D11Buffer> vertexBuffer;
+    ComPtr<ID3D11Buffer> indexBuffer;
+    ComPtr<ID3D11Buffer> VConstantBuffer;
+    
+private:
 };
