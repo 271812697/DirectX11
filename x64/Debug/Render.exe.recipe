@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>E:\C++\DirectX11\Project1\x64\Debug\Render.exe</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles>
+    <ContentFile>
+      <FullPath>E:\C++\DirectX11\Project1\x64\Debug\DepthP.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>E:\C++\DirectX11\Project1\x64\Debug\DepthV.cso</FullPath>
+    </ContentFile>
+  </ContentFiles>
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>
