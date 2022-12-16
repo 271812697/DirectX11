@@ -2,6 +2,7 @@
 #include"../util/math.h"
 #include"../util/global.h"
 namespace component {
+	ComPtr<ID3D11InputLayout> Mesh::m_pVertexLayout;
 	void component::Mesh::CreateSphere(float radius)
 	{
 		constexpr float PI = 3.141592654;

@@ -189,8 +189,7 @@ void PBRDraw(ID3D11DeviceContext* context,Model* model, EffectCallBack call) {
        // effect.GetEffectPass("PBR")->SetDepthStencilState(RenderStates::DSSLessEqual.Get(), 0);
         uint32_t shader_model[4] = {1,0};
         effect.GetConstantBufferVariable("model")->SetUIntVector(2, shader_model);
-        float albedo[4] = { 1.0,0.0,0.0,1.0 };
-        effect.GetConstantBufferVariable("albedo")->SetFloatVector(4,albedo);
+
         float dl_direction[4] = { 1.0,1.0,1.0,1.0 };
         effect.GetConstantBufferVariable("dl_direction")->SetFloatVector(4, dl_direction);
         effect.GetConstantBufferVariable("ao")->SetFloat(1.0);
@@ -228,6 +227,8 @@ void PBRDraw(ID3D11DeviceContext* context,Model* model, EffectCallBack call) {
     static bool sample_metallic = 0;
     static bool sample_roughness = 0;
     static bool sample_ao = 0;
+    static float albedo[4] = { 1.0,0.0,0.1,1.0 };
+    ImGui::ColorEdit4("albedo", albedo);
     ImGui::Checkbox("sample_albedo", &sample_albedo);
     ImGui::SameLine();
     ImGui::Checkbox("sample_normal", &sample_normal);
@@ -237,6 +238,7 @@ void PBRDraw(ID3D11DeviceContext* context,Model* model, EffectCallBack call) {
     Ui::DrawVerticalLine();
     Ui::DrawTooltip("try");
     ImGui::Checkbox("sample_ao", &sample_ao);
+    effect.GetConstantBufferVariable("albedo")->SetFloatVector(4, albedo);
     effect.GetConstantBufferVariable("sample_albedo")->SetSInt(sample_albedo);
     effect.GetConstantBufferVariable("sample_normal")->SetSInt(sample_normal);
     effect.GetConstantBufferVariable("sample_metallic")->SetSInt(sample_metallic);;
@@ -349,6 +351,7 @@ bool GameApp::InitEffect()
     // 创建并绑定顶点布局
     HR(m_pd3dDevice->CreateInputLayout(VertexPosNormalTangentTex::GetInputLayout(), 4,
         blob->GetBufferPointer(), blob->GetBufferSize(), m_pVertexLayout.GetAddressOf()));
+
     effect.CreateShaderFromFile("PS", L"PS.hlsl", m_pd3dDevice.Get(), "main", "ps_5_0");
     EffectPassDesc pass;
     pass.nameVS = "SkyBoxV";
@@ -370,15 +373,15 @@ bool GameApp::InitResource()
     PreComputeIBL(m_pd3dImmediateContext.Get());
     return true;
 }
-#else
+#endif
+#ifdef C12
+#include"ui.h"
 #include "GameApp.h"
 #include "d3dUtil.h"
 #include "DXTrace.h"
-#include"Settings.h"
 #include"EffectHelper.h"
 #include"std_image_write.h"
 #include"Vertex.h"
-#include<direct.h>
 #include<filesystem>
 #include"RenderState.h"
 #include"TextureManager.h"
@@ -386,163 +389,16 @@ bool GameApp::InitResource()
 #include"CameraController.h"
 #include"Texture2D.h"
 #include"ModelManager.h"
-#include"LightHelper.h"
-#include"SimpleMath.h"
-#include"ScreenGrab11.h"
+#include"component/mesh.h"
+#include"../util/global.h"
 using namespace DirectX;
-//特效助理
-
 EffectHelper effect;
-EffectHelper depth_effect;
-Depth2D* depthtexture;
-TextureCube* depthtexture_Cube;
-TextureManager textureManager;
 FirstPersonCamera g_Fcamera;
 FirstPersonCameraController controller;
-ModelManager model_manager;
-float light[3] = { 0,0,0 };
-static XMFLOAT3 lightpos[5] = { XMFLOAT3(10.0f, 0.0f, 0.0f),XMFLOAT3(-10.0f, 0.0f, 0.0f),XMFLOAT3(0.0f, 0.0f, 10.0f),XMFLOAT3(0.0f, 0.0f, -10.0f),XMFLOAT3(1.0f, 5.0f, 1.0f) };
-void Basicdraw(Model* model, ID3D11DeviceContext* context) {
-    auto it = DirectX::XMMatrixTranspose(model->getTransform().GetLocalToWorldMatrixXM());
-    effect.GetConstantBufferVariable("g_World")->SetFloatMatrix(4, 4, (float*)&it.r);
-    it = XMath::InverseTranspose(it);
-    effect.GetConstantBufferVariable("g_WorldInvTranspose")->SetFloatMatrix(4, 4, (float*)it.r);
-    for (int i = 0; i < model->meshdatas.size(); i++) {
-        PhongMaterial phongMat{};
-        auto material = model->materials[model->meshdatas[i].m_MaterialIndex];
-        phongMat.ambient = material.Get<XMFLOAT4>("$AmbientColor");
-        phongMat.diffuse = material.Get<XMFLOAT4>("$DiffuseColor");
-        phongMat.diffuse.w = material.Get<float>("$Opacity");
-        phongMat.specular = material.Get<XMFLOAT4>("$SpecularColor");
-        phongMat.specular.w = material.Has<float>("$SpecularFactor") ? material.Get<float>("$SpecularFactor") : 1.0f;
-        effect.GetConstantBufferVariable("g_Material")->SetRaw(&phongMat);
-        auto it = material.TryGet<std::string>("$Diffuse");
-        if (it) {
-            effect.GetConstantBufferVariable("haveT")->SetSInt(1);
-            effect.SetShaderResourceByName("g_DiffuseMap", textureManager.GetTexture(material.Get<std::string>("$Diffuse")));
-        }
-        else {
-            effect.GetConstantBufferVariable("haveT")->SetSInt(0);
-        }
-        effect.GetEffectPass("Basic")->Apply(context);
-        ID3D11Buffer* buffer[5] = {
-            model->meshdatas[i].m_pVertices.Get(),
-            model->meshdatas[i].m_pNormals.Get(),
-            model->meshdatas[i].m_pTangents.Get(),
-            model->meshdatas[i].m_pTexcoordArrays.size() > 0 ? model->meshdatas[i].m_pTexcoordArrays[0].Get() : nullptr,
-            model->meshdatas[i].m_pIndices.Get()
-        };
-        UINT stride[4] = { 12,12,16,8 };
-        UINT offset[4] = { 0,0,0,0 };
-        context->IASetVertexBuffers(0, 4, buffer, stride, offset);
-        context->IASetIndexBuffer(buffer[4], model->meshdatas[i].m_IndexCount > 65535 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
-        context->DrawIndexed(model->meshdatas[i].m_IndexCount, 0, 0);
-    }
-
-}
-void Skydraw(ID3D11DeviceContext* context) {
-    static bool initflag = false;
-    ID3D11ShaderResourceView* it = nullptr;
-
-    if (!initflag) {
-        initflag = true;
-        model_manager.CreateFromGeometry("box", Geometry::CreateBox());
-        ID3D11Device* m_pd3dDevice = nullptr;
-        context->GetDevice(&m_pd3dDevice);
-        //使用计算着色器从hdr加载天空图
-
-        effect.SetSamplerStateByName("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
-        effect.GetEffectPass("SkyBox")->SetRasterizerState(RenderStates::RSNoCull.Get());
-        effect.GetEffectPass("SkyBox")->SetDepthStencilState(RenderStates::DSSLessEqual.Get(), 0);
-
-        effect.CreateShaderFromFile("CS", L"CS.hlsl", m_pd3dDevice, "CS", "cs_5_0", nullptr, nullptr);
-        EffectPassDesc pass;
-        pass.nameVS = "";
-        pass.nameGS = "";
-        pass.namePS = "";
-        pass.nameDS = "";
-        pass.nameHS = "";
-        pass.nameCS = "CS";
-        effect.AddEffectPass("CSPASS", m_pd3dDevice, &pass);
-        {
-            TextureCube* cubemap = new TextureCube(m_pd3dDevice, 2048, 2048, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_BIND_UNORDERED_ACCESS);
-            TextureCube* cubemapcopy = new TextureCube(m_pd3dDevice, 2048, 2048, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_BIND_SHADER_RESOURCE);
-            CD3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc(D3D11_UAV_DIMENSION_TEXTURE2DARRAY, DXGI_FORMAT_R32G32B32A32_FLOAT);
-            ID3D11UnorderedAccessView* ppUAView = nullptr;
-            m_pd3dDevice->CreateUnorderedAccessView(cubemap->GetTexture(), &uavDesc, &ppUAView);
-            effect.SetUnorderedAccessByName("cubemap", ppUAView);
-            auto view = textureManager.CreateFromFile("E:\\C++\\opengl\\opengl\\res\\texture\\HDRI\\Sky.hdr", false, true);
-            effect.SetShaderResourceByName("HDR", view);
-            effect.SetSamplerStateByName("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
-            effect.GetEffectPass("CSPASS")->Apply(context);
-            context->Dispatch(64, 64, 6);
-            context->CopyResource(cubemapcopy->GetTexture(), cubemap->GetTexture());
-            effect.SetShaderResourceByName("g_TexCube", cubemapcopy->GetShaderResource());
-            SaveDDSTextureToFile(context, cubemapcopy->GetTexture(), L"./res.dds");
-        }
-
-    }
-    effect.GetEffectPass("SkyBox")->Apply(context);
-    Model* model = model_manager.GetModel("box");
-    for (int i = 0; i < model->meshdatas.size(); i++) {
-        ID3D11Buffer* buffer[5] = { model->meshdatas[i].m_pVertices.Get(),
-            model->meshdatas[i].m_pNormals.Get(),
-            model->meshdatas[i].m_pTangents.Get(),
-            model->meshdatas[i].m_pTexcoordArrays.size() > 0 ? model->meshdatas[i].m_pTexcoordArrays[0].Get() : nullptr,
-            model->meshdatas[i].m_pIndices.Get()
-        };
-        UINT stride[4] = { 12,12,16,8 };
-        UINT offset[4] = { 0,0,0,0 };
-        context->IASetVertexBuffers(0, 4, buffer, stride, offset);
-        context->IASetIndexBuffer(buffer[4], model->meshdatas[i].m_IndexCount > 65535 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
-        context->DrawIndexed(model->meshdatas[i].m_IndexCount, 0, 0);
-    }
-}
-void Wiredraw(Model* model, ID3D11DeviceContext* context) {
-    auto it = DirectX::XMMatrixTranspose(model->getTransform().GetLocalToWorldMatrixXM());
-    effect.GetConstantBufferVariable("World")->SetFloatMatrix(4, 4, (float*)&it.r);
-    for (int i = 0; i < model->meshdatas.size(); i++) {
-        effect.GetEffectPass("Line")->Apply(context);
-        ID3D11Buffer* buffer[5] = { model->meshdatas[i].m_pVertices.Get(),
-            model->meshdatas[i].m_pNormals.Get(),
-            model->meshdatas[i].m_pTangents.Get(),
-            model->meshdatas[i].m_pTexcoordArrays.size() > 0 ? model->meshdatas[i].m_pTexcoordArrays[0].Get() : nullptr,
-            model->meshdatas[i].m_pIndices.Get()
-        };
-        UINT stride[4] = { 12,12,16,8 };
-        UINT offset[4] = { 0,0,0,0 };
-        context->IASetVertexBuffers(0, 4, buffer, stride, offset);
-        context->IASetIndexBuffer(buffer[4], model->meshdatas[i].m_IndexCount > 65535 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
-        context->DrawIndexed(model->meshdatas[i].m_IndexCount, 0, 0);
-    }
-}
-void Depthdraw(Model* model, ID3D11DeviceContext* context) {
-    auto it = DirectX::XMMatrixTranspose(model->getTransform().GetLocalToWorldMatrixXM());
-    depth_effect.GetConstantBufferVariable("g_World")->SetFloatMatrix(4, 4, (float*)&it.r);
-    depth_effect.GetEffectPass("Depth")->Apply(context);
-    for (int i = 0; i < model->meshdatas.size(); i++) {
-        ID3D11Buffer* buffer[5] = {
-            model->meshdatas[i].m_pVertices.Get(),
-            model->meshdatas[i].m_pNormals.Get(),
-            model->meshdatas[i].m_pTangents.Get(),
-            model->meshdatas[i].m_pTexcoordArrays.size() > 0 ? model->meshdatas[i].m_pTexcoordArrays[0].Get() : nullptr,
-            model->meshdatas[i].m_pIndices.Get()
-        };
-        UINT stride[4] = { 12,12,16,8 };
-        UINT offset[4] = { 0,0,0,0 };
-        context->IASetVertexBuffers(0, 4, buffer, stride, offset);
-        context->IASetIndexBuffer(buffer[4], model->meshdatas[i].m_IndexCount > 65535 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
-        context->DrawIndexed(model->meshdatas[i].m_IndexCount, 0, 0);
-    }
-}
-
-
-
-
+component::Mesh mesh;
 GameApp::GameApp(HINSTANCE hInstance)
     : D3DApp(hInstance)
 {
-
 }
 GameApp::~GameApp()
 {
@@ -553,17 +409,13 @@ bool GameApp::Init()
         return false;
 
     RenderStates::InitAll(m_pd3dDevice.Get());
-    textureManager.Init(m_pd3dDevice.Get());
-    model_manager.Init(m_pd3dDevice.Get());
+    //初始化全局设置
+    global::InitGraphicI(m_pd3dDevice.Get(),m_pd3dImmediateContext.Get());   
     if (!InitEffect())
         return false;
     if (!InitResource())
         return false;
 
-
-    effect.SetSamplerStateByName("g_Sam", RenderStates::SSLinearClamp.Get());
-    effect.GetEffectPass("Basic")->SetRasterizerState(RenderStates::RSNoCull.Get());
-    effect.GetEffectPass("Line")->SetRasterizerState(RenderStates::RSWireframe.Get());
     //初始化相机和相机控制器
     controller.InitCamera(&g_Fcamera);
     g_Fcamera.SetViewPort(m_ScreenViewport);
@@ -576,86 +428,32 @@ void GameApp::OnResize()
     D3DApp::OnResize();
     g_Fcamera.SetViewPort(m_ScreenViewport);
     g_Fcamera.SetFrustum(45, this->AspectRatio(), 0.1, 1000.0);
-
 }
 void GameApp::UpdateScene(float dt)
 {
     controller.Update(dt);
     auto it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewMatrixXM());
-    effect.GetConstantBufferVariable("View")->SetFloatMatrix(4, 4, (float*)it.r);
+    effect.GetConstantBufferVariable("V")->SetFloatMatrix(4, 4, (float*)it.r);
     it = DirectX::XMMatrixTranspose(g_Fcamera.GetProjMatrixXM());
-    effect.GetConstantBufferVariable("Proj")->SetFloatMatrix(4, 4, (float*)it.r);
-    it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewProjMatrixXM());
-    effect.GetConstantBufferVariable("g_ViewProj")->SetFloatMatrix(4, 4, (float*)it.r);
-
+    effect.GetConstantBufferVariable("P")->SetFloatMatrix(4, 4, (float*)it.r);
     it = DirectX::XMMatrixIdentity();
-    effect.GetConstantBufferVariable("g_EyePosW")->Set(g_Fcamera.GetPosition());
-    depth_effect.GetConstantBufferVariable("lightPos")->SetFloatVector(3, light);
-    effect.GetConstantBufferVariable("lightPos")->SetFloatVector(3, light);
-    model_manager.GetModel("light")->getTransform().SetPosition(SimpleMath::Vector3(light));
-    ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-    ImGui::SliderFloat3("lightpos", light, -10, 10);
+    effect.GetConstantBufferVariable("W")->SetFloatMatrix(4, 4, (float*)it.r);
 
-    ImGui::End();
+   
 }
 void GameApp::DrawScene()
 {
     assert(m_pd3dImmediateContext);
     assert(m_pSwapChain);
     static float black[4] = { 0.3f, 0.3f, 0.3f, 0.0f };
-
-#pragma region DepthDraw
-    static XMFLOAT3 ups[6] = {
-            { 0.0f, 1.0f, 0.0f },	// +X
-            { 0.0f, 1.0f, 0.0f },	// -X
-            { 0.0f, 0.0f, -1.0f },	// +Y
-            { 0.0f, 0.0f, 1.0f },	// -Y
-            { 0.0f, 1.0f, 0.0f },	// +Z
-            { 0.0f, 1.0f, 0.0f }	// -Z
-    };
-
-    static XMFLOAT3 looks[6] = {
-        { 1.0f, 0.0f, 0.0f },	// +X
-        { -1.0f, 0.0f, 0.0f },	// -X
-        { 0.0f, 1.0f, 0.0f },	// +Y
-        { 0.0f, -1.0f, 0.0f },	// -Y
-        { 0.0f, 0.0f, 1.0f },	// +Z
-        { 0.0f, 0.0f, -1.0f },	// -Z
-    };
-    D3D11_VIEWPORT Viewport = { 0,0,1000,1000,0,1.0 };
-    m_pd3dImmediateContext->RSSetViewports(1, &Viewport);
-
-    auto Proj = XMMatrixPerspectiveFovLH(XM_PIDIV2, 1.0f, 0.1f, 1000.0f);
-
-    for (int i = 0; i < 6; i++) {
-        m_pd3dImmediateContext->ClearDepthStencilView(depthtexture->GetDepthStencil(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-        m_pd3dImmediateContext->OMSetRenderTargets(0, nullptr, depthtexture->GetDepthStencil());
-        auto view = SimpleMath::Matrix::CreateLookAt(SimpleMath::Vector3(light), looks[i] + SimpleMath::Vector3(light), ups[i]);
-        auto it = DirectX::XMMatrixTranspose(DirectX::XMMatrixMultiply(view, Proj));
-        depth_effect.GetConstantBufferVariable("g_ViewProj")->SetFloatMatrix(4, 4, (float*)it.r);
-        Depthdraw(model_manager.GetModel("nanosuit"), m_pd3dImmediateContext.Get());
-        Depthdraw(model_manager.GetModel("wall"), m_pd3dImmediateContext.Get());
-        m_pd3dImmediateContext->CopySubresourceRegion(depthtexture_Cube->GetTexture(), D3D11CalcSubresource(0, i, 1), 0, 0, 0, depthtexture->GetTexture(), 0, nullptr);
-    }
-#pragma endregion
-
-
-
-
-
-
-
-
-    m_pd3dImmediateContext->RSSetViewports(1, &m_ScreenViewport);
     m_pd3dImmediateContext->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
     m_pd3dImmediateContext->ClearRenderTargetView(m_pRenderTargetView.Get(), black);
     m_pd3dImmediateContext->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
-    Skydraw(m_pd3dImmediateContext.Get());
+    effect.GetEffectPass("Mesh")->Apply(m_pd3dImmediateContext.Get());
+    mesh.Draw();
 
 
-    Basicdraw(model_manager.GetModel("nanosuit"), m_pd3dImmediateContext.Get());
-    Basicdraw(model_manager.GetModel("wall"), m_pd3dImmediateContext.Get());
-    Wiredraw(model_manager.GetModel("light"), m_pd3dImmediateContext.Get());
+  
 #ifdef USE_IMGUI
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -670,104 +468,34 @@ LRESULT GameApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 bool GameApp::InitEffect()
 {
     ComPtr<ID3DBlob> blob;
-    effect.CreateShaderFromFile("LineV", L"LineV.hlsl", m_pd3dDevice.Get(), "main", "vs_5_0");
 
-    effect.CreateShaderFromFile("LineP", L"LineP.hlsl", m_pd3dDevice.Get(), "main", "ps_5_0");
-
-    effect.CreateShaderFromFile("SkyBoxV", L"SkyBoxV.hlsl", m_pd3dDevice.Get(), "main", "vs_5_0");
-
-    effect.CreateShaderFromFile("SkyBoxP", L"SkyBoxP.hlsl", m_pd3dDevice.Get(), "main", "ps_5_0");
-
-    effect.CreateShaderFromFile("VS", L"HLSL/VS.hlsl", m_pd3dDevice.Get(), "main", "vs_5_0", nullptr, blob.GetAddressOf());
+    effect.CreateShaderFromFile("VS", L"../HLSL/VS.hlsl", m_pd3dDevice.Get(), "main", "vs_5_0", nullptr, blob.GetAddressOf());
     // 创建并绑定顶点布局
-    HR(m_pd3dDevice->CreateInputLayout(VertexPosNormalTangentTex::GetInputLayout(), 4,
+    HR(m_pd3dDevice->CreateInputLayout(component::Mesh::Vertex::GetInputLayout(), 8,
         blob->GetBufferPointer(), blob->GetBufferSize(), m_pVertexLayout.GetAddressOf()));
-    effect.CreateShaderFromFile("PS", L"HLSL/PS.hlsl", m_pd3dDevice.Get(), "main", "ps_5_0");
 
-
+    effect.CreateShaderFromFile("PS", L"../HLSL/PS.hlsl", m_pd3dDevice.Get(), "main", "ps_5_0");
     EffectPassDesc pass;
-
-    pass.nameVS = "LineV";
-    pass.nameGS = "";
-    pass.namePS = "LineP";
-    pass.nameDS = "";
-    pass.nameHS = "";
-    effect.AddEffectPass("Line", m_pd3dDevice.Get(), &pass);
     pass.nameVS = "VS";
     pass.nameGS = "";
     pass.namePS = "PS";
     pass.nameDS = "";
     pass.nameHS = "";
-    effect.AddEffectPass("Basic", m_pd3dDevice.Get(), &pass);
-    pass.nameVS = "SkyBoxV";
-    pass.nameGS = "";
-    pass.namePS = "SkyBoxP";
-    pass.nameDS = "";
-    pass.nameHS = "";
-    effect.AddEffectPass("SkyBox", m_pd3dDevice.Get(), &pass);
-
-
-    depth_effect.CreateShaderFromFile("V", L"DepthV.hlsl", m_pd3dDevice.Get(), "main", "vs_5_0");
-    depth_effect.CreateShaderFromFile("P", L"DepthP.hlsl", m_pd3dDevice.Get(), "main", "ps_5_0");
-    pass.nameVS = "V";
-    pass.nameGS = "";
-    pass.namePS = "P";
-    pass.nameDS = "";
-    pass.nameHS = "";
-    depth_effect.AddEffectPass("Depth", m_pd3dDevice.Get(), &pass);
+    effect.AddEffectPass("Mesh", m_pd3dDevice.Get(), &pass);
     return true;
 }
 bool GameApp::InitResource()
 {
-    depthtexture = new Depth2D(m_pd3dDevice.Get(), 1000, 1000);
-    depthtexture_Cube = new TextureCube(m_pd3dDevice.Get(), 1000, 1000, DXGI_FORMAT_R24_UNORM_X8_TYPELESS, 1, D3D11_BIND_SHADER_RESOURCE);
-    depthtexture->SetDebugObjectName("depthture");
-    depthtexture_Cube->SetDebugObjectName("depthture_Cube");
-    effect.SetShaderResourceByName("depthtexture_Cube", depthtexture_Cube->GetShaderResource());
-
-    model_manager.CreateFromFile("nanosuit", "resources/objects/nanosuit/nanosuit.obj");
-    model_manager.GetModel("nanosuit")->getTransform().SetPosition(0, 1, 0);
-    model_manager.GetModel("nanosuit")->getTransform().SetScale(0.1, 0.1, 0.1);
-    model_manager.CreateFromGeometry("grid", Geometry::CreateGrid({ 25,25 }, { 25,25 }, { 1,1 }));
-    model_manager.CreateFromGeometry("wall", Geometry::CreateBox());
-    model_manager.GetModel("wall")->getTransform().SetScale(25, 12.5, 25);
-    model_manager.GetModel("wall")->getTransform().SetPosition(0, -15, 0);
-    model_manager.CreateFromGeometry("light", Geometry::CreateSphere(0.05, 40, 40));
-
-
     m_pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_pd3dImmediateContext->IASetInputLayout(m_pVertexLayout.Get());
-#pragma region light
-    // ******************
-  // 初始化不会变化的值
-  //
-  // 环境光
-    DirectionalLight dirLight{};
-    dirLight.ambient = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-    dirLight.diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
-    dirLight.specular = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-    dirLight.direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
-    effect.GetConstantBufferVariable("g_DirLight")->SetRaw(&dirLight, (sizeof dirLight) * 0, sizeof dirLight);
-    // 灯光
-    PointLight pointLight{};
-    pointLight.position = XMFLOAT3(0.0f, 10.0f, 0.0f);
-    pointLight.ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
-    pointLight.diffuse = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
-    pointLight.specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
-    pointLight.att = XMFLOAT3(0.0f, 0.1f, 0.0f);
-    pointLight.range = 30.0f;
-    for (int i = 0; i < 5; i++) {
-        pointLight.position = lightpos[i];
-        effect.GetConstantBufferVariable("g_PointLight")->SetRaw(&pointLight, (sizeof pointLight) * i, sizeof pointLight);
-    }
-#pragma endregion
+    effect.GetEffectPass("Mesh")->SetRasterizerState(RenderStates::RSNoCull.Get());
+    effect.GetEffectPass("Mesh")->SetDepthStencilState(RenderStates::DSSLessEqual.Get(), 0);
+    mesh.CreateSphere();
+
     return true;
 }
+#endif // C12
 
 
-
-
-
-#endif // C1
 
 
