@@ -6,13 +6,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 file(GLOB SRC ${PROJECT_SOURCE_DIR}/*.cpp)
 file(GLOB HEAD ${PROJECT_SOURCE_DIR}/*.h)
 file(GLOB IMGUI ${PROJECT_SOURCE_DIR}/ImGui/*.*)
+file(GLOB UTIL ${PROJECT_SOURCE_DIR}/util/*.*)
+file(GLOB COMPONENT ${PROJECT_SOURCE_DIR}/component/*.*)
 #收集字体文件
 file(GLOB FONT ${PROJECT_SOURCE_DIR}/*.ttf)
 #收集着色器文件
 file(GLOB HLSL ${PROJECT_SOURCE_DIR}/*.hlsl)
 #整理目录
 source_group(imgui FILES ${IMGUI})
-add_executable(DirectX11 WIN32 ${SRC} ${HEAD} ${IMGUI})
+source_group(util FILES ${UTIL})
+source_group(component FILES ${COMPONENT})
+add_executable(DirectX11 WIN32 ${SRC} ${HEAD} ${IMGUI} ${UTIL} ${COMPONENT})
+#设置工作目录
+set_property(TARGET DirectX11 PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+
 #设置链接库目录
 target_link_directories(DirectX11 PUBLIC
    ${PROJECT_SOURCE_DIR}/lib
@@ -43,14 +50,14 @@ advapi32.lib
 assimp-vc143-mt.lib
 )
 #拷贝文件到工作目录
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assimp-vc143-mt.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+#file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assimp-vc143-mt.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 #拷贝字体
-foreach(list ${FONT})
-file(COPY ${list} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-endforeach(list ${FONT})
+#foreach(list ${FONT})
+#file(COPY ${list} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+#endforeach(list ${FONT})
 #拷贝着色器
-foreach(list ${HLSL})
-file(COPY ${list} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-endforeach(list ${HLSL})
+#foreach(list ${HLSL})
+#file(COPY ${list} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+#endforeach(list ${HLSL})
 #拷贝资源文件
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+#file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

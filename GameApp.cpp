@@ -1,4 +1,4 @@
-#define C11
+#define C12
 #ifdef C11
 #include"ui.h"
 #include "GameApp.h"
@@ -469,12 +469,12 @@ bool GameApp::InitEffect()
 {
     ComPtr<ID3DBlob> blob;
 
-    effect.CreateShaderFromFile("VS", L"../HLSL/VS.hlsl", m_pd3dDevice.Get(), "main", "vs_5_0", nullptr, blob.GetAddressOf());
+    effect.CreateShaderFromFile("VS", L"HLSL/VS.hlsl", m_pd3dDevice.Get(), "main", "vs_5_0", nullptr, blob.GetAddressOf());
     // 创建并绑定顶点布局
     HR(m_pd3dDevice->CreateInputLayout(component::Mesh::Vertex::GetInputLayout(), 8,
         blob->GetBufferPointer(), blob->GetBufferSize(), m_pVertexLayout.GetAddressOf()));
 
-    effect.CreateShaderFromFile("PS", L"../HLSL/PS.hlsl", m_pd3dDevice.Get(), "main", "ps_5_0");
+    effect.CreateShaderFromFile("PS", L"HLSL/PS.hlsl", m_pd3dDevice.Get(), "main", "ps_5_0");
     EffectPassDesc pass;
     pass.nameVS = "VS";
     pass.nameGS = "";
