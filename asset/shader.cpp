@@ -44,6 +44,16 @@ std::shared_ptr<EffectHelper> asset::Shader::GetEffectHelper()
 	return effect;
 }
 
+void asset::Shader::SetSample(std::string_view name, ID3D11SamplerState* samplerState)
+{
+    effect->SetSamplerStateByName(name,samplerState);
+}
+
+void asset::Shader::setSV(std::string name, ID3D11ShaderResourceView* sv)
+{
+    effect->SetShaderResourceByName(name,sv);
+}
+
 void asset::Shader::SetRenderState(ID3D11RasterizerState* pRS, ID3D11DepthStencilState* pDSS, uint32_t stencilRef)
 {
     if (pRS) {

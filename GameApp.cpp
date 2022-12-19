@@ -15,12 +15,13 @@
 #include"Texture2D.h"
 #include"ModelManager.h"
 #include"util/global.h"
+#include"component/Material.h"
 using namespace DirectX;
 //特效助理
 
 asset::Shader effect;
 TextureManager textureManager;
-ModelManager model_manager;
+
 FirstPersonCamera g_Fcamera;
 FirstPersonCameraController controller;
 
@@ -28,7 +29,7 @@ TextureCube* skybox = nullptr;
 TextureCube* irradiance = nullptr;
 TextureCube* prefilter_map = nullptr;
 Texture2D* BRDF_LUT = nullptr;
-using EffectCallBack=std::function<void(EffectHelper*,Model*)>;
+using EffectCallBack=std::function<void(component::Material*)>;
 void PreComputeIBL(ID3D11DeviceContext* context) {
     ID3D11Device* m_pd3dDevice = nullptr;
     context->GetDevice(&m_pd3dDevice);
@@ -146,126 +147,54 @@ void PreComputeIBL(ID3D11DeviceContext* context) {
 }
 void Skydraw(ID3D11DeviceContext* context) {
     static bool initflag = false;
+    static component::Mesh mesh;
     if (!initflag) {
         initflag = true;
-        model_manager.CreateFromGeometry("box", Geometry::CreateBox());
-        effect.GetEffectHelper()->SetShaderResourceByName("g_TexCube", skybox->GetShaderResource());
+        mesh.CreateSphere();
+        effect.setSV("g_TexCube", skybox->GetShaderResource());
     }
     effect.Apply();
-    Model* model = model_manager.GetModel("box");
-    for (int i = 0; i < model->meshdatas.size(); i++) {
-        ID3D11Buffer* buffer[5] = { model->meshdatas[i].m_pVertices.Get(),
-            model->meshdatas[i].m_pNormals.Get(),
-            model->meshdatas[i].m_pTangents.Get(),
-            model->meshdatas[i].m_pTexcoordArrays.size() > 0 ? model->meshdatas[i].m_pTexcoordArrays[0].Get() : nullptr,
-            model->meshdatas[i].m_pIndices.Get()
-        };
-        UINT stride[4] = { 12,12,16,8 };
-        UINT offset[4] = { 0,0,0,0 };
-        context->IASetVertexBuffers(0, 4, buffer, stride, offset);
-        context->IASetIndexBuffer(buffer[4], model->meshdatas[i].m_IndexCount > 65535 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
-        context->DrawIndexed(model->meshdatas[i].m_IndexCount, 0, 0);
-    }
+    mesh.Draw();
 }
-void PBRDraw(ID3D11DeviceContext* context,Model* model, EffectCallBack call) {
+void PBRDraw(ID3D11DeviceContext* context,EffectCallBack call) {
     static bool initflag = false;
-    static EffectHelper effect;
+    static asset::Shader* effect=nullptr;
+    static component::Material mat;
+    static component::Mesh mesh;
     if (!initflag) {
+        mesh.CreateSphere();
         initflag = true;
         ID3D11Device* m_pd3dDevice = nullptr;
         context->GetDevice(&m_pd3dDevice);
-        //load shader
-        D3D_SHADER_MACRO vDefines[] = {"PBR_VERTEX",NULL,NULL,NULL};
-        effect.CreateShaderFromFile("PBRV", L"PBR.hlsl", m_pd3dDevice, "main", "vs_5_0",vDefines);
-        D3D_SHADER_MACRO pDefines[] = { "PBR_PIXEL",NULL,NULL,NULL };
-        effect.CreateShaderFromFile("PBRP", L"PBR.hlsl", m_pd3dDevice, "main", "ps_5_0", pDefines);
-        EffectPassDesc pass;
-        pass.nameVS = "PBRV";
-        pass.nameGS = "";
-        pass.namePS = "PBRP";
-        pass.nameDS = "";
-        pass.nameHS = "";
-        effect.AddEffectPass("PBR", m_pd3dDevice, &pass);
-        effect.GetEffectPass("PBR")->SetRasterizerState(RenderStates::RSNoCull.Get());
-       // effect.GetEffectPass("PBR")->SetDepthStencilState(RenderStates::DSSLessEqual.Get(), 0);
-        uint32_t shader_model[4] = {1,0};
-        effect.GetConstantBufferVariable("model")->SetUIntVector(2, shader_model);
-
+        effect = new asset::Shader();
+        effect->Init("PBR.hlsl"); 
+        mat.SetShader(std::shared_ptr<asset::Shader>( effect) );
+        uint32_t shader_model[2] = {1,0};
+        mat.SetVal("model",shader_model,2);
         float dl_direction[4] = { 1.0,1.0,1.0,1.0 };
-        effect.GetConstantBufferVariable("dl_direction")->SetFloatVector(4, dl_direction);
-        effect.GetConstantBufferVariable("ao")->SetFloat(1.0);
-        effect.GetConstantBufferVariable("specular")->SetFloat(0.5);
-        effect.SetSamplerStateByName("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
+        mat.SetVal("dl_direction",dl_direction,4);
+        mat.SetVal("ao", 1.0f);;
+        mat.SetVal("specular",0.5f);
+        mat.SetSample("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
 
-        effect.SetShaderResourceByName("irradiance_map", irradiance->GetShaderResource());
-        effect.SetShaderResourceByName("prefilter_map", prefilter_map->GetShaderResource());
-        effect.SetShaderResourceByName("BRDF_LUT", BRDF_LUT->GetShaderResource());
+        mat.setSV("irradiance_map", irradiance->GetShaderResource());
+        mat.setSV("prefilter_map", prefilter_map->GetShaderResource());
+        mat.setSV("BRDF_LUT", BRDF_LUT->GetShaderResource());
         auto normal_texture = textureManager.CreateFromFile("resources\\textures\\pbr\\wall\\normal.jpg",true,true);;
         auto albedo_texture = textureManager.CreateFromFile("resources\\textures\\pbr\\wall\\albedo.jpg", true, true);;
         auto metallic_texture = textureManager.CreateFromFile("resources\\textures\\pbr\\wall\\metallic.png", true, true);
         auto roughness_texture = textureManager.CreateFromFile("resources\\textures\\pbr\\wall\\roughness.jpg", true, true);;
         auto ao_texture = textureManager.CreateFromFile("resources\\textures\\pbr\\wall\\ao.png", true, true);
 
-        effect.SetShaderResourceByName("albedo_map",albedo_texture);
-        effect.SetShaderResourceByName("normal_map", normal_texture);
-        effect.SetShaderResourceByName("metallic_map", metallic_texture);
-        effect.SetShaderResourceByName("roughness_map", roughness_texture);
-        effect.SetShaderResourceByName("ao_map", ao_texture);
+        mat.setSV("albedo_map",albedo_texture);
+        mat.setSV("normal_map", normal_texture);
+        mat.setSV("metallic_map", metallic_texture);
+        mat.setSV("roughness_map", roughness_texture);
+        mat.setSV("ao_map", ao_texture);
     }
-    call(&effect,model);
-    effect.GetConstantBufferVariable("g_World")->SetVal(model->getTransform().GetLocalToWorldMatrixXM());
-
-    Ui::NewInspector();   
-    static float metalic = 0.1;
-    static float roughness = 0.1;
-    ImGui::SliderFloat("metalic",&metalic,0.0,1.0);
-    ImGui::SliderFloat("roughness",&roughness,0.0,1.0);
-    effect.GetConstantBufferVariable("roughness")->SetFloat(roughness);
-    effect.GetConstantBufferVariable("metalness")->SetFloat(metalic); 
-
-    static bool sample_albedo = 0;
-    static bool sample_normal = 0;
-    static bool sample_metallic = 0;
-    static bool sample_roughness = 0;
-    static bool sample_ao = 0;
-    static float albedo[4] = { 1.0,0.0,0.1,1.0 };
-    ImGui::ColorEdit4("albedo", albedo);
-    ImGui::Checkbox("sample_albedo", &sample_albedo);
-    ImGui::SameLine();
-    ImGui::Checkbox("sample_normal", &sample_normal);
-    ImGui::Checkbox("sample_metallic", &sample_metallic);
-    ImGui::SameLine();
-    ImGui::Checkbox("sample_roughness", &sample_roughness);
-    Ui::DrawVerticalLine();
-    Ui::DrawTooltip("try");
-    ImGui::Checkbox("sample_ao", &sample_ao);
-    effect.GetConstantBufferVariable("albedo")->SetFloatVector(4, albedo);
-    effect.GetConstantBufferVariable("sample_albedo")->SetSInt(sample_albedo);
-    effect.GetConstantBufferVariable("sample_normal")->SetSInt(sample_normal);
-    effect.GetConstantBufferVariable("sample_metallic")->SetSInt(sample_metallic);;
-    effect.GetConstantBufferVariable("sample_roughness")->SetSInt(sample_roughness);;
-    effect.GetConstantBufferVariable("sample_ao")->SetSInt(sample_ao);;
-    static float uv_scale[2] = { 2,2 };
-    ImGui::SliderFloat2("uv_scale",uv_scale,1,10);
-    Ui::EndInspector();
-    effect.GetConstantBufferVariable("uv_scale")->SetFloatVector(2, uv_scale);
-
-
-    effect.GetEffectPass("PBR")->Apply(context);
-    for (int i = 0; i < model->meshdatas.size(); i++) {
-        ID3D11Buffer* buffer[5] = {
-            model->meshdatas[i].m_pVertices.Get(),
-            model->meshdatas[i].m_pNormals.Get(),
-            model->meshdatas[i].m_pTangents.Get(),
-            model->meshdatas[i].m_pTexcoordArrays.size() > 0 ? model->meshdatas[i].m_pTexcoordArrays[0].Get() : nullptr,
-            model->meshdatas[i].m_pIndices.Get()
-        };
-        UINT stride[4] = { 12,12,16,8 };
-        UINT offset[4] = { 0,0,0,0 };
-        context->IASetVertexBuffers(0, 4, buffer, stride, offset);
-        context->IASetIndexBuffer(buffer[4], model->meshdatas[i].m_IndexCount > 65535 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
-        context->DrawIndexed(model->meshdatas[i].m_IndexCount, 0, 0);
-    }
+    call(&mat);
+    mat.Bind();
+    mesh.Draw();
 }
 GameApp::GameApp(HINSTANCE hInstance)
     : D3DApp(hInstance)
@@ -281,7 +210,7 @@ bool GameApp::Init()
 
     global::InitGraphicI(m_pd3dDevice, m_pd3dImmediateContext);
     textureManager.Init(m_pd3dDevice.Get());
-    model_manager.Init(m_pd3dDevice.Get());
+    
     if (!InitEffect())
         return false;
     if (!InitResource())
@@ -303,11 +232,9 @@ void GameApp::UpdateScene(float dt)
 {
     controller.Update(dt);
     auto it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewMatrixXM());
-    effect.GetEffectHelper()->GetConstantBufferVariable("View")->SetFloatMatrix(4, 4, (float*)it.r);
+    effect.SetVal("View",it);
     it = DirectX::XMMatrixTranspose(g_Fcamera.GetProjMatrixXM());
-    effect.GetEffectHelper()->GetConstantBufferVariable("Proj")->SetFloatMatrix(4, 4, (float*)it.r);
-    it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewProjMatrixXM());
-    effect.GetEffectHelper()->GetConstantBufferVariable("g_ViewProj")->SetFloatMatrix(4, 4, (float*)it.r);
+    effect.SetVal("Proj", it);
 }
 void GameApp::DrawScene()
 {
@@ -318,17 +245,51 @@ void GameApp::DrawScene()
     m_pd3dImmediateContext->ClearRenderTargetView(m_pRenderTargetView.Get(), black);
     m_pd3dImmediateContext->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
     Skydraw(m_pd3dImmediateContext.Get());
-    auto callback = [] (EffectHelper* e,Model* model) {
+    auto callback = [] (component::Material* e) {
         auto it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewMatrixXM());
-        e->GetConstantBufferVariable("g_View")->SetFloatMatrix(4, 4, (float*)it.r);
+        e->SetVal("g_View", it);
         it = DirectX::XMMatrixTranspose(g_Fcamera.GetProjMatrixXM());
-        e->GetConstantBufferVariable("g_Proj")->SetFloatMatrix(4, 4, (float*)it.r);
-        it = DirectX::XMMatrixTranspose(model->getTransform().GetLocalToWorldMatrixXM());
-        e->GetConstantBufferVariable("g_World")->SetFloatMatrix(4, 4, (float*)it.r);
-        
-        e->GetConstantBufferVariable("position")->SetVal(g_Fcamera.GetPosition());;
+        e->SetVal("g_Proj", it);
+        it = DirectX::XMMatrixIdentity();
+        e->SetVal("g_World",it);
+        e->SetVal("position",g_Fcamera.GetPosition());
+        Ui::NewInspector();
+        static float metalic = 0.1;
+        static float roughness = 0.1;
+        static bool sample_albedo = 0;
+        static bool sample_normal = 0;
+        static bool sample_metallic = 0;
+        static bool sample_roughness = 0;
+        static bool sample_ao = 0;
+        static float albedo[4] = { 1.0,0.0,0.1,1.0 };
+        static float uv_scale[2] = { 2,2 };
+        ImGui::ColorEdit4("albedo", albedo);
+        ImGui::SliderFloat("metalic", &metalic, 0.0, 1.0);
+        ImGui::SliderFloat("roughness", &roughness, 0.0, 1.0);
+
+        ImGui::Checkbox("sample_albedo", &sample_albedo);
+        ImGui::SameLine();
+        ImGui::Checkbox("sample_normal", &sample_normal);
+        ImGui::Checkbox("sample_metallic", &sample_metallic);
+        ImGui::SameLine();
+        ImGui::Checkbox("sample_roughness", &sample_roughness);
+        Ui::DrawVerticalLine();
+        Ui::DrawTooltip("try");
+        ImGui::Checkbox("sample_ao", &sample_ao);
+        ImGui::SliderFloat2("uv_scale", uv_scale, 1, 10);
+        Ui::EndInspector();
+        //e->BindVal("roughness",&roughness);
+        e->SetVal("roughness", roughness);
+        e->SetVal("metalness", metalic);
+        e->SetVal("albedo", albedo, 4);
+        e->SetVal("sample_albedo", sample_albedo);
+        e->SetVal("sample_normal", sample_normal);
+        e->SetVal("sample_metallic", sample_metallic);
+        e->SetVal("sample_roughness", sample_roughness);
+        e->SetVal("sample_ao", sample_ao);
+        e->SetVal("uv_scale", uv_scale, 2);
     };
-    PBRDraw(m_pd3dImmediateContext.Get(),model_manager.GetModel("Sphere"),callback);
+    PBRDraw(m_pd3dImmediateContext.Get(),callback);
 #ifdef USE_IMGUI
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -344,17 +305,15 @@ bool GameApp::InitEffect()
 {
     ComPtr<ID3DBlob> blob;
     effect.Init("SkyBoxV.hlsl");
-
     return true;
 }
 bool GameApp::InitResource()
 {
     m_pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_pd3dImmediateContext->IASetInputLayout(global::m_pVertexLayout.Get());
-    effect.GetEffectHelper()->SetSamplerStateByName("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
+    //天空盒设置渲染状态
+    effect.SetSample("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
     effect.SetRenderState(RenderStates::RSNoCull.Get(), RenderStates::DSSLessEqual.Get(), 0);
-    
-    model_manager.CreateFromGeometry("Sphere",Geometry::CreateSphere(1.0,40,40));
     PreComputeIBL(m_pd3dImmediateContext.Get());
     return true;
 }

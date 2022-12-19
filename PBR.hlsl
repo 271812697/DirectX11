@@ -7,13 +7,18 @@ cbuffer CBChangesEveryDrawing : register(b0)
     float4 direction;
 }
 //#define PBR_VERTEX
-#ifdef PBR_VERTEX
+#ifdef VS
 struct VertexIn {
-    float3 PosL : POSITION;
-    float3 Normal : NORMAL;
-    float4 tangent : TANGENT;
-    float2 tex : TEXCOORD;
+    float3 pos : POSITION;
+    float3 normal : NORMAL;
+    float2 uv0 : TEXCOORD0;
+    float2 uv1 : TEXCOORD1;
+    float3 tangent : TANGENT;
+    float3 binormal : BINORMAL;
+    int4 bone_id : BONEID;
+    float4 bone_wt : BONEWE;
 };
+
 struct VertexOut
 {
     float4 PosH : SV_POSITION;
@@ -30,23 +35,23 @@ struct VertexOut
 VertexOut main(VertexIn vIn)
 {
     VertexOut vOut;
-    float4 w =mul(float4(vIn.PosL, 1.0), g_World);
+    float4 w =mul(float4(vIn.pos, 1.0), g_World);
     //float4 w =float4(vIn.PosL, 1.0);
     vOut._position = w.xyz;
     vOut.PosH = mul(w, g_View);
     vOut.PosH = mul(vOut.PosH,g_Proj);
-    vOut._normal = normalize(mul(vIn.Normal, (float3x3) g_World));
-    vOut._tangent = normalize(mul(vIn.tangent, g_World));
+    vOut._normal = normalize(mul(vIn.normal, (float3x3) g_World));
+    vOut._tangent = normalize(mul(vIn.tangent, (float3x3)g_World));
     vOut._binormal = normalize(cross(vOut._normal, vOut._tangent));
-    vOut._uv = vIn.tex;
-    vOut._uv2 = vIn.tex;
+    vOut._uv = vIn.uv0;
+    vOut._uv2 = vIn.uv1;
     return vOut;
 }
 
 
 #endif
 
-#ifdef PBR_PIXEL
+#ifdef PS
 struct PixelIn
 {
     float4 PosH : SV_POSITION;
