@@ -3,6 +3,7 @@
 #include <d3d11shader.h>
 #include <d3dcompiler.h>
 #include <filesystem>
+#include"core/log.h"
 #include "XUtil.h"
 #include <d3d11_1.h>
 #include "EffectHelper.h"
@@ -42,7 +43,7 @@ using namespace Microsoft::WRL;
             }\
         }\
         else\
-            return E_INVALIDARG;\
+            CORE_ERROR("{0} shader is invalid",#ShaderType);\
     }\
 }
 
@@ -935,6 +936,7 @@ HRESULT EffectHelper::CreateShaderFromFile(std::string_view shaderName, std::wst
         {
             if (errorBlob != nullptr)
             {
+                CORE_ERROR("{0}", reinterpret_cast<const char*>(errorBlob->GetBufferPointer()));
                 OutputDebugStringA(reinterpret_cast<const char*>(errorBlob->GetBufferPointer()));
                 errorBlob->Release();
             }
@@ -1029,7 +1031,7 @@ HRESULT EffectHelper::AddEffectPass(std::string_view effectPassName, ID3D11Devic
 
     EFFECTHELPER_EFFECTPASS_SET_SHADER_AND_PARAM(VertexShader, VS);
     EFFECTHELPER_EFFECTPASS_SET_SHADER_AND_PARAM(DomainShader, DS);
-    EFFECTHELPER_EFFECTPASS_SET_SHADER_AND_PARAM(HullShader, HS);
+    EFFECTHELPER_EFFECTPASS_SET_SHADER_AND_PARAM(HullShader, HS); 
     EFFECTHELPER_EFFECTPASS_SET_SHADER_AND_PARAM(GeometryShader, GS);
     EFFECTHELPER_EFFECTPASS_SET_SHADER_AND_PARAM(PixelShader, PS);
     EFFECTHELPER_EFFECTPASS_SET_SHADER_AND_PARAM(ComputeShader, CS);

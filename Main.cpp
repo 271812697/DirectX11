@@ -1,9 +1,5 @@
 #include "GameApp.h"
-
-
-HANDLE hStdin;
-
-HANDLE hStdout;
+#include"core/log.h"
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE prevInstance,
 	_In_ LPSTR cmdLine, _In_ int showCmd)
 {
@@ -18,18 +14,15 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE prevInstance,
 
 
 	AllocConsole();
-	hStdin = GetStdHandle(STD_INPUT_HANDLE);
-	hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-	char buffer[100] = "hello world";
-	DWORD length = strlen(buffer);
-	WriteFile(hStdout, buffer, length, &length, 0);
-
+	::core::Log::Init();
+	CORE_INFO("start the log");
 	GameApp theApp(hInstance);
 
 	if (!theApp.Init())
 		return 0;
-
-	return theApp.Run();
+	int res=theApp.Run();
+	::core::Log::Shutdown();
+	return res;
 }
 
 

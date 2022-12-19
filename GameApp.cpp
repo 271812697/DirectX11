@@ -391,8 +391,9 @@ bool GameApp::InitResource()
 #include"ModelManager.h"
 #include"component/mesh.h"
 #include"../util/global.h"
+#include "../asset/shader.h"
 using namespace DirectX;
-EffectHelper effect;
+asset::Shader shader;
 FirstPersonCamera g_Fcamera;
 FirstPersonCameraController controller;
 component::Mesh mesh;
@@ -432,12 +433,13 @@ void GameApp::OnResize()
 void GameApp::UpdateScene(float dt)
 {
     controller.Update(dt);
+    auto effect = shader.GetEffectHelper();
     auto it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewMatrixXM());
-    effect.GetConstantBufferVariable("V")->SetFloatMatrix(4, 4, (float*)it.r);
+    effect->GetConstantBufferVariable("V")->SetFloatMatrix(4, 4, (float*)it.r);
     it = DirectX::XMMatrixTranspose(g_Fcamera.GetProjMatrixXM());
-    effect.GetConstantBufferVariable("P")->SetFloatMatrix(4, 4, (float*)it.r);
+    effect->GetConstantBufferVariable("P")->SetFloatMatrix(4, 4, (float*)it.r);
     it = DirectX::XMMatrixIdentity();
-    effect.GetConstantBufferVariable("W")->SetFloatMatrix(4, 4, (float*)it.r);
+    effect->GetConstantBufferVariable("W")->SetFloatMatrix(4, 4, (float*)it.r);
 
    
 }
@@ -449,7 +451,8 @@ void GameApp::DrawScene()
     m_pd3dImmediateContext->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
     m_pd3dImmediateContext->ClearRenderTargetView(m_pRenderTargetView.Get(), black);
     m_pd3dImmediateContext->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
-    effect.GetEffectPass("Mesh")->Apply(m_pd3dImmediateContext.Get());
+    //effect.GetEffectPass("Mesh")->Apply(m_pd3dImmediateContext.Get());
+    shader.Apply();
     mesh.Draw();
 
 
@@ -467,29 +470,16 @@ LRESULT GameApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 bool GameApp::InitEffect()
 {
-    ComPtr<ID3DBlob> blob;
+    shader.Init("HLSL/VS.hlsl");
 
-    effect.CreateShaderFromFile("VS", L"HLSL/VS.hlsl", m_pd3dDevice.Get(), "main", "vs_5_0", nullptr, blob.GetAddressOf());
-    // 创建并绑定顶点布局
-    HR(m_pd3dDevice->CreateInputLayout(component::Mesh::Vertex::GetInputLayout(), 8,
-        blob->GetBufferPointer(), blob->GetBufferSize(), m_pVertexLayout.GetAddressOf()));
-
-    effect.CreateShaderFromFile("PS", L"HLSL/PS.hlsl", m_pd3dDevice.Get(), "main", "ps_5_0");
-    EffectPassDesc pass;
-    pass.nameVS = "VS";
-    pass.nameGS = "";
-    pass.namePS = "PS";
-    pass.nameDS = "";
-    pass.nameHS = "";
-    effect.AddEffectPass("Mesh", m_pd3dDevice.Get(), &pass);
     return true;
 }
 bool GameApp::InitResource()
 {
     m_pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_pd3dImmediateContext->IASetInputLayout(m_pVertexLayout.Get());
-    effect.GetEffectPass("Mesh")->SetRasterizerState(RenderStates::RSNoCull.Get());
-    effect.GetEffectPass("Mesh")->SetDepthStencilState(RenderStates::DSSLessEqual.Get(), 0);
+    m_pd3dImmediateContext->IASetInputLayout(global::m_pVertexLayout.Get());
+    shader.GetEffectHelper()->GetEffectPass("Shader")->SetDepthStencilState(RenderStates::DSSLessEqual.Get(), 0);
+   
     mesh.CreateSphere();
 
     return true;
