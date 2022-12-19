@@ -936,7 +936,7 @@ HRESULT EffectHelper::CreateShaderFromFile(std::string_view shaderName, std::wst
         {
             if (errorBlob != nullptr)
             {
-                CORE_ERROR("{0}", reinterpret_cast<const char*>(errorBlob->GetBufferPointer()));
+                CORE_WARN("{0}", reinterpret_cast<const char*>(errorBlob->GetBufferPointer()));
                 OutputDebugStringA(reinterpret_cast<const char*>(errorBlob->GetBufferPointer()));
                 errorBlob->Release();
             }

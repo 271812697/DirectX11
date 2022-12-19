@@ -44,6 +44,16 @@ std::shared_ptr<EffectHelper> asset::Shader::GetEffectHelper()
 	return effect;
 }
 
+void asset::Shader::SetRenderState(ID3D11RasterizerState* pRS, ID3D11DepthStencilState* pDSS, uint32_t stencilRef)
+{
+    if (pRS) {
+        effect->GetEffectPass("Shader")->SetRasterizerState(pRS);
+     }
+    if (pDSS) {
+        effect->GetEffectPass("Shader")->SetDepthStencilState(pDSS,stencilRef);
+    }
+}
+
 void asset::Shader::Apply()
 {
 	CORE_ASERT(effect.get(), "you must first initalize the shader code");

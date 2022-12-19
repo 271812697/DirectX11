@@ -1,10 +1,10 @@
-#define C12
+#define C11
 #ifdef C11
 #include"ui.h"
 #include "GameApp.h"
 #include "d3dUtil.h"
 #include "DXTrace.h"
-#include"EffectHelper.h"
+#include"asset/shader.h"
 #include"std_image_write.h"
 #include"Vertex.h"
 #include<filesystem>
@@ -14,10 +14,11 @@
 #include"CameraController.h"
 #include"Texture2D.h"
 #include"ModelManager.h"
+#include"util/global.h"
 using namespace DirectX;
 //特效助理
 
-EffectHelper effect;
+asset::Shader effect;
 TextureManager textureManager;
 ModelManager model_manager;
 FirstPersonCamera g_Fcamera;
@@ -148,9 +149,9 @@ void Skydraw(ID3D11DeviceContext* context) {
     if (!initflag) {
         initflag = true;
         model_manager.CreateFromGeometry("box", Geometry::CreateBox());
-        effect.SetShaderResourceByName("g_TexCube", skybox->GetShaderResource());
+        effect.GetEffectHelper()->SetShaderResourceByName("g_TexCube", skybox->GetShaderResource());
     }
-    effect.GetEffectPass("SkyBox")->Apply(context);
+    effect.Apply();
     Model* model = model_manager.GetModel("box");
     for (int i = 0; i < model->meshdatas.size(); i++) {
         ID3D11Buffer* buffer[5] = { model->meshdatas[i].m_pVertices.Get(),
@@ -278,7 +279,7 @@ bool GameApp::Init()
     if (!D3DApp::Init())
         return false;
 
-    RenderStates::InitAll(m_pd3dDevice.Get());
+    global::InitGraphicI(m_pd3dDevice, m_pd3dImmediateContext);
     textureManager.Init(m_pd3dDevice.Get());
     model_manager.Init(m_pd3dDevice.Get());
     if (!InitEffect())
@@ -302,11 +303,11 @@ void GameApp::UpdateScene(float dt)
 {
     controller.Update(dt);
     auto it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewMatrixXM());
-    effect.GetConstantBufferVariable("View")->SetFloatMatrix(4, 4, (float*)it.r);
+    effect.GetEffectHelper()->GetConstantBufferVariable("View")->SetFloatMatrix(4, 4, (float*)it.r);
     it = DirectX::XMMatrixTranspose(g_Fcamera.GetProjMatrixXM());
-    effect.GetConstantBufferVariable("Proj")->SetFloatMatrix(4, 4, (float*)it.r);
+    effect.GetEffectHelper()->GetConstantBufferVariable("Proj")->SetFloatMatrix(4, 4, (float*)it.r);
     it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewProjMatrixXM());
-    effect.GetConstantBufferVariable("g_ViewProj")->SetFloatMatrix(4, 4, (float*)it.r);
+    effect.GetEffectHelper()->GetConstantBufferVariable("g_ViewProj")->SetFloatMatrix(4, 4, (float*)it.r);
 }
 void GameApp::DrawScene()
 {
@@ -342,33 +343,17 @@ LRESULT GameApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 bool GameApp::InitEffect()
 {
     ComPtr<ID3DBlob> blob;
+    effect.Init("SkyBoxV.hlsl");
 
-    effect.CreateShaderFromFile("SkyBoxV", L"SkyBoxV.hlsl", m_pd3dDevice.Get(), "main", "vs_5_0");
-
-    effect.CreateShaderFromFile("SkyBoxP", L"SkyBoxP.hlsl", m_pd3dDevice.Get(), "main", "ps_5_0");
-
-    effect.CreateShaderFromFile("VS", L"VS.hlsl", m_pd3dDevice.Get(), "main", "vs_5_0", nullptr, blob.GetAddressOf());
-    // 创建并绑定顶点布局
-    HR(m_pd3dDevice->CreateInputLayout(VertexPosNormalTangentTex::GetInputLayout(), 4,
-        blob->GetBufferPointer(), blob->GetBufferSize(), m_pVertexLayout.GetAddressOf()));
-
-    effect.CreateShaderFromFile("PS", L"PS.hlsl", m_pd3dDevice.Get(), "main", "ps_5_0");
-    EffectPassDesc pass;
-    pass.nameVS = "SkyBoxV";
-    pass.nameGS = "";
-    pass.namePS = "SkyBoxP";
-    pass.nameDS = "";
-    pass.nameHS = "";
-    effect.AddEffectPass("SkyBox", m_pd3dDevice.Get(), &pass);
     return true;
 }
 bool GameApp::InitResource()
 {
     m_pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_pd3dImmediateContext->IASetInputLayout(m_pVertexLayout.Get());
-    effect.SetSamplerStateByName("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
-    effect.GetEffectPass("SkyBox")->SetRasterizerState(RenderStates::RSNoCull.Get());
-    effect.GetEffectPass("SkyBox")->SetDepthStencilState(RenderStates::DSSLessEqual.Get(), 0);
+    m_pd3dImmediateContext->IASetInputLayout(global::m_pVertexLayout.Get());
+    effect.GetEffectHelper()->SetSamplerStateByName("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
+    effect.SetRenderState(RenderStates::RSNoCull.Get(), RenderStates::DSSLessEqual.Get(), 0);
+    
     model_manager.CreateFromGeometry("Sphere",Geometry::CreateSphere(1.0,40,40));
     PreComputeIBL(m_pd3dImmediateContext.Get());
     return true;
@@ -383,7 +368,6 @@ bool GameApp::InitResource()
 #include"std_image_write.h"
 #include"Vertex.h"
 #include<filesystem>
-#include"RenderState.h"
 #include"TextureManager.h"
 #include"Camera.h"
 #include"CameraController.h"
@@ -409,7 +393,7 @@ bool GameApp::Init()
     if (!D3DApp::Init())
         return false;
 
-    RenderStates::InitAll(m_pd3dDevice.Get());
+   
     //初始化全局设置
     global::InitGraphicI(m_pd3dDevice.Get(),m_pd3dImmediateContext.Get());   
     if (!InitEffect())
@@ -451,7 +435,7 @@ void GameApp::DrawScene()
     m_pd3dImmediateContext->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
     m_pd3dImmediateContext->ClearRenderTargetView(m_pRenderTargetView.Get(), black);
     m_pd3dImmediateContext->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
-    //effect.GetEffectPass("Mesh")->Apply(m_pd3dImmediateContext.Get());
+    
     shader.Apply();
     mesh.Draw();
 

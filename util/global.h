@@ -3,6 +3,7 @@
 #include <DirectXMath.h>
 #include <wrl/client.h>
 #include"../core/log.h"
+#include"../RenderState.h"
 #include"../EffectHelper.h"
 #include"../component/mesh.h"
 namespace global {
@@ -12,8 +13,6 @@ namespace global {
 	{
 		ComPtr<ID3D11Device> m_pDevice=nullptr;
 		ComPtr<ID3D11DeviceContext> m_pDeviceContext = nullptr;
-		
-		
 	};
 	inline GraphicI graphic;
 	//默认的顶点布局
@@ -32,8 +31,13 @@ namespace global {
 		// 创建并绑定顶点布局
 		D->CreateInputLayout(component::Mesh::Vertex::GetInputLayout(), 8,
 			blob->GetBufferPointer(), blob->GetBufferSize(), m_pVertexLayout.GetAddressOf());
+		//创建渲染状态
+		CORE_INFO("RenderStates Initalize");
+		RenderStates::InitAll(D.Get());
+		
 		graphic.m_pDevice = D;
 		graphic.m_pDeviceContext = C;
+
 	}
 	inline GraphicI& GetGraphicI() {
 		return graphic;
