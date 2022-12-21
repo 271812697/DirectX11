@@ -99,50 +99,6 @@ namespace XMath
         return (1.0f - t) * a + t * b;
     }
 }
-template<typename T, typename...Args>
-std::shared_ptr<T> MakeRef(Args&&...args) {
-    return std::make_shared<T>(std::forward<Args>(args)...);
-}
-template<typename T>
-using asset_ref = std::shared_ptr<T>;
-
-class RecesoureManager {
-private:
-    std::map<XID, std::type_index> registry;
-    std::map<XID, asset_ref<void>> resources;
-public:
-    template<typename T>
-    void Add(std::string_view str,const asset_ref<T>&val) {
-        XID id = StringToID(str);
-        if (registry.find(id) != registry.end()) {
-            return;
-        }
-        registry.try_emplace(id, typeid(T));
-        resources.insert_or_assign(id,std::static_pointer_cast<void>(val));
-    }
-    template<typename T>
-    asset_ref<T> Get(std::string_view str) {
-        XID id = StringToID(str);
-        if (registry.find(id) == registry.end()) {
-            return nullptr;
-        }
-        else if (registry.at(id) != std::type_index(typeid(T))) {
-            return nullptr;
-        }
-        return std::static_pointer_cast<T>(resources.at(id));
-    }
-    void Del(std::string_view str) {
-        XID key = StringToID(str);
-        if (registry.find(key) != registry.end()) {
-            registry.erase(key);
-            resources.erase(key);
-        }
-    }
-    void Clear() {
-        registry.clear();
-        resources.clear();
-    }
-};
 
 
 #endif

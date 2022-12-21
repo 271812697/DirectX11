@@ -3,8 +3,9 @@
 #include<memory>
 #include<map>
 #include"../asset/shader.h"
+#include"../util/util.h"
 namespace component {
-
+	using namespace util;
 	template<typename T>
 	class Uniform {
 	public:
@@ -51,6 +52,12 @@ namespace component {
 		std::map<std::string, uniform_variant>uniforms;
 		
 	public:
+		Material(asset_ref<Material>s): Material(*s) {
+
+		}
+		Material(std::shared_ptr<asset::Shader>s) {
+			SetShader(s);
+		}
 		Material() = default;
 		void SetShader(std::shared_ptr<asset::Shader>s) {
 			shader = s;

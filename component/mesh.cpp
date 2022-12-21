@@ -2,7 +2,7 @@
 #include"../util/math.h"
 #include"../util/global.h"
 namespace component {
-	ComPtr<ID3D11InputLayout> Mesh::m_pVertexLayout;
+	//ComPtr<ID3D11InputLayout> Mesh::m_pVertexLayout;
 	void component::Mesh::CreateSphere(float radius)
 	{
 		constexpr float PI = 3.141592654;
@@ -103,6 +103,27 @@ namespace component {
 
 	component::Mesh::Mesh(Primitive object)
 	{
+		switch (object)
+		{
+		case component::Primitive::Sphere: {
+			CreateSphere();
+		}
+			break;
+		case component::Primitive::Cube:
+			break;
+		case component::Primitive::Plane:
+			break;
+		case component::Primitive::Quad2D:
+			break;
+		case component::Primitive::Torus:
+			break;
+		case component::Primitive::Capsule:
+			break;
+		case component::Primitive::Tetrahedron:
+			break;
+		default:
+			break;
+		}
 	}
 
 	component::Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<UINT32>& indices)

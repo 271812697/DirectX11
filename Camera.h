@@ -2,7 +2,7 @@
 #include "WinMin.h"
 #include <d3d11_1.h>
 #include <DirectXMath.h>
-#include "Transform.h"
+#include "component/Transform.h"
 
 class Camera
 {
@@ -64,7 +64,7 @@ public:
 protected:
 
     // 摄像机的变换
-    Transform m_Transform = {};
+    component::Transform m_Transform = {};
 
     // 视锥体属性
     float m_NearZ = 0.0f;

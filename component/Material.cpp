@@ -17,20 +17,7 @@ void component::Material::SetRenderState(ID3D11RasterizerState* pRS, ID3D11Depth
 
 void component::Material::Bind() const
 {
-	/*
-	
-		// visitor lambda function
-	static auto upload = [](auto& unif) { unif.Upload(); };
 
-	CORE_ASERT(shader, "Unable to bind the material, please set a valid shader first...");
-	shader->Bind();  // smart bind the attached shader
-
-	// upload uniform values to the shader
-	for (const auto& [location, unif_variant] : uniforms) {
-		std::visit(upload, unif_variant);
-	}
-	
-	*/
 	static auto upload = [this](auto& unif) { unif.Upload(this->shader.get());  };
 	for (const auto& it : uniforms) {
 		std::visit(upload,it.second);	

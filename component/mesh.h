@@ -16,7 +16,7 @@ namespace component {
     using D3D11_INPUT_ELEMENT_DESC_ARRAY = const D3D11_INPUT_ELEMENT_DESC(&)[numElements];
     class Mesh  {
     public:
-        static ComPtr<ID3D11InputLayout> m_pVertexLayout;
+        //static ComPtr<ID3D11InputLayout> m_pVertexLayout;
         struct Vertex {
             DirectX::XMFLOAT3  position;
             DirectX::XMFLOAT3  normal;

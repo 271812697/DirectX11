@@ -4,7 +4,7 @@
 #include "Geometry.h"
 #include "Material.h"
 #include "MeshData.h"
-#include"Transform.h"
+#include"component/Transform.h"
 #include <d3d11_1.h>
 #include <wrl/client.h>
 
@@ -20,10 +20,10 @@ struct Model
     std::vector<Material> materials;
     std::vector<MeshData> meshdatas;
     DirectX::BoundingBox boundingbox;
-    Transform transform;
+    component::Transform transform;
     static void CreateFromFile(Model& model, ID3D11Device* device, std::string_view filename);
     static void CreateFromGeometry(Model& model, ID3D11Device* device, const GeometryData& data, bool isDynamic = false);
-    Transform& getTransform() {
+    component::Transform& getTransform() {
         return transform;
     }
     void SetDebugObjectName(std::string_view name);
