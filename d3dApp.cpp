@@ -219,8 +219,8 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 #ifdef USE_IMGUI
 	if (msg != WM_DESTROY&&msg!=WM_QUIT) {
-		if (ImGui_ImplWin32_WndProcHandler(m_hMainWnd, msg, wParam, lParam))
-		return true;
+		if (ImGui_ImplWin32_WndProcHandler(m_hMainWnd, msg, wParam, lParam));
+		//return true;
 	}
 	
 #endif

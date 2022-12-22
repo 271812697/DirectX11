@@ -300,3 +300,4 @@ void ThirdPersonCamera::SetDistanceMinMax(float minDist, float maxDist)
     m_MaxDist = maxDist;
 }
 
+

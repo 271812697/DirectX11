@@ -2,6 +2,14 @@
 #include <DirectXMath.h>
 #include<cmath>
 namespace util {
+	constexpr float PI = 3.141592654;
+	constexpr float PI_2 = 3.141592654 / 2;
+	inline float radians(float degree){
+		return PI * degree / 180.0f;
+	}
+	inline float degree(float radians) {
+		return radians * 180 / PI;
+	}
 	inline DirectX::XMFLOAT3 operator*(DirectX::XMFLOAT3& a, float b) {
 		return DirectX::XMFLOAT3{a.x*b,a.y*b,a.z*b};
 	}

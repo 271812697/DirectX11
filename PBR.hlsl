@@ -6,7 +6,6 @@ cbuffer CBChangesEveryDrawing : register(b0)
     float4 position;
     float4 direction;
 }
-//#define PBR_VERTEX
 #ifdef VS
 struct VertexIn {
     float3 pos : POSITION;
@@ -50,7 +49,7 @@ VertexOut main(VertexIn vIn)
 
 
 #endif
-
+#define PS
 #ifdef PS
 struct PixelIn
 {
@@ -62,11 +61,7 @@ struct PixelIn
     float2 _uv : TEXCOORD0;
     float2 _uv2 : TEXCOORD1;
 };
-struct PixelOut
-{
-    float4 color : SV_TARGET;
-    //float depth : SV_Depth;
-};
+
 SamplerState g_SamLinear : register(s0);
 // sampler binding points (texture units) 17-19 are reserved for PBR IBL
 TextureCube irradiance_map : register(t17);
@@ -86,7 +81,7 @@ Texture2D light_map : register(t28);
 Texture2D anisotan_map : register(t29); // anisotropic tangent map (RGB)
 Texture2D ext_unit_30 : register(t30);
 Texture2D ext_unit_31 : register(t31);
-// default-block (loose) uniform locations >= 900 are reserved for PBR use
+//these are reserved for PBR use
 uniform bool sample_albedo;
 uniform bool sample_normal;
 uniform bool sample_metallic;
@@ -910,6 +905,7 @@ float Linear2Gamma(float grayscale)
 */
 float3 ComputeLD(const float3 R, float roughness)
 {
+    //
     const float max_level =11.0;
     float miplevel = max_level * QuarticEaseIn(roughness);
     return prefilter_map.SampleLevel(g_SamLinear, R, miplevel).rgb;
@@ -1531,7 +1527,11 @@ cbuffer SL : register(b2) {
     float sl_range;
 } 
 
-
+struct PixelOut
+{
+    float4 color : SV_TARGET;
+    //float depth : SV_Depth;
+};
 
 PixelOut main(PixelIn pIn)
 {
