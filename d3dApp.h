@@ -5,7 +5,6 @@
 #include <string>
 #include <d3d11_1.h>
 #include <DirectXMath.h>
-#include "GameTimer.h"
 #ifdef USE_IMGUI
 #include"imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
@@ -43,7 +42,7 @@ protected:
 
 	void CalculateFrameStats(); // 计算每秒帧数并在窗口显示
 
-protected:
+public:
 
 	HINSTANCE m_hAppInst;        // 应用实例句柄
 	HWND      m_hMainWnd;        // 主窗口句柄
@@ -55,7 +54,7 @@ protected:
 	UINT      m_4xMsaaQuality;   // MSAA支持的质量等级
 
 
-	GameTimer m_Timer;           // 计时器
+	
 
 	// 使用模板别名(C++11)简化类型名
 	template <class T>

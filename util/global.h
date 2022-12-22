@@ -2,6 +2,7 @@
 #include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <wrl/client.h>
+#include "../GameTimer.h"
 #include"../core/log.h"
 #include"../RenderState.h"
 #include"../EffectHelper.h"
@@ -17,6 +18,10 @@ namespace global {
 	inline GraphicI graphic;
 	//默认的顶点布局
 	inline ComPtr<ID3D11InputLayout> m_pVertexLayout = nullptr;
+	inline  GameTimer& GetTimer() {
+		static GameTimer m_Timer; 
+		return m_Timer;// 计时器
+	}
 
 	inline void InitGraphicI(Microsoft::WRL::ComPtr<ID3D11Device> D, Microsoft::WRL::ComPtr<ID3D11DeviceContext> C) {
 		if (graphic.m_pDevice != nullptr) { 

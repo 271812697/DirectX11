@@ -1,12 +1,10 @@
 #include "scene01.h"
-#include"../Camera.h"
-#include"../CameraController.h"
+#include"../component/Camera.h"
+#include"../component/CameraController.h"
 #include"../util/global.h"
 #include"../RenderState.h"
 #include"../TextureManager.h"
 #include"../ui.h"
-extern FirstPersonCamera g_Fcamera;
-extern FirstPersonCameraController controller;
 extern TextureManager textureManager;
 namespace scene{
 void Scene01::Init()
@@ -17,9 +15,7 @@ void Scene01::Init()
 	resource_manager.Add(03, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(01)));
 	resource_manager.Add(04, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(02)));
 	sphere = CreateEntity("sphere");
-
 	sphere.AddComponent<component::Mesh>(component::Primitive::Sphere);
-   
     sphere.AddComponent<component::Spotlight>(color::white,3.8f,4.0f, 10.0f, 45.0f);	
     if (auto& mat = sphere.AddComponent<component::Material>(resource_manager.Get<component::Material>(04));true) {
 		SetupMaterial(mat,01);
@@ -29,14 +25,17 @@ void Scene01::Init()
 	if (auto& mat = sky.AddComponent<component::Material>(resource_manager.Get<component::Material>(03)); true) {
 		SetupMaterial(mat,2);
 	}
+    camera = CreateEntity("camera");
+    auto& c=camera.AddComponent<component::FirstPersonCamera>();
+    camera.AddComponent<component::FirstPersonCameraController>().InitCamera(&c);
 }
 
 void Scene01::OnSceneRender()
 {
 	auto& mat = sky.GetComponent<component::Material>();
-	auto it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewMatrixXM());
+	auto it = DirectX::XMMatrixTranspose(camera.GetComponent<component::FirstPersonCamera>().GetViewMatrixXM());
 	mat.SetVal("View", it);
-	it = DirectX::XMMatrixTranspose(g_Fcamera.GetProjMatrixXM());
+	it = DirectX::XMMatrixTranspose(camera.GetComponent<component::FirstPersonCamera>().GetProjMatrixXM());
 	mat.SetVal("Proj", it);
 	mat.Bind();
 	sky.GetComponent<component::Mesh>().Draw();
@@ -46,7 +45,8 @@ void Scene01::OnSceneRender()
 
 void Scene01::OnImGuiRender()
 {
-    auto callback = [](component::Material* e,Entity& s) {
+    auto callback = [this](component::Material* e,Entity& s) {
+        auto& g_Fcamera = camera.GetComponent<component::FirstPersonCamera>();
         auto it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewMatrixXM());
         e->SetVal("g_View", it);
         it = DirectX::XMMatrixTranspose(g_Fcamera.GetProjMatrixXM());
@@ -95,6 +95,7 @@ void Scene01::OnImGuiRender()
     };
     auto mat=sphere.GetComponent<component::Material>();
     callback(&mat,sphere);
+    camera.GetComponent<component::FirstPersonCameraController>().Update(global::GetTimer().DeltaTime());
    
 }
 void Scene01::PrecomputeIBL(const std::string& hdri)
@@ -226,20 +227,6 @@ void Scene01::SetupMaterial(Material& pbr_mat, int mat_id)
         pbr_mat.SetVal("ao", 1.0f);;
         pbr_mat.SetVal("specular", 0.5f);
         pbr_mat.SetSample("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
-
-        //æ€π‚
-        /*
-        cbuffer SL : register(b2) {
-    float4  sl_color;
-    float4  sl_position;
-    float4  sl_direction;
-    float sl_intensity;
-    float sl_inner_cos;
-    float sl_outer_cos;
-    float sl_range;
-} 
-        */
-
         pbr_mat.setSV("irradiance_map", irradiance->GetShaderResource());
         pbr_mat.setSV("prefilter_map", prefilter_map->GetShaderResource());
         pbr_mat.setSV("BRDF_LUT", BRDF_LUT->GetShaderResource());
@@ -248,23 +235,17 @@ void Scene01::SetupMaterial(Material& pbr_mat, int mat_id)
         auto metallic_texture = textureManager.CreateFromFile("resources\\textures\\pbr\\wall\\metallic.png", true, true);
         auto roughness_texture = textureManager.CreateFromFile("resources\\textures\\pbr\\wall\\roughness.jpg", true, true);;
         auto ao_texture = textureManager.CreateFromFile("resources\\textures\\pbr\\wall\\ao.png", true, true);
-
         pbr_mat.setSV("albedo_map", albedo_texture);
         pbr_mat.setSV("normal_map", normal_texture);
         pbr_mat.setSV("metallic_map", metallic_texture);
         pbr_mat.setSV("roughness_map", roughness_texture);
         pbr_mat.setSV("ao_map", ao_texture);
-
         auto& l = sphere.GetComponent<component::Spotlight>();
-        
         pbr_mat.SetVal("sl_color",l.color);
         pbr_mat.SetVal("sl_intensity", l.intensity);
         pbr_mat.SetVal("sl_inner_cos",l.GetInnerCosine() );
         pbr_mat.SetVal("sl_outer_cos", l.GetOuterCosine());
         pbr_mat.SetVal("sl_range", l.range);
-
-
-
 	}
 	else if (mat_id == 2) {
 		//ÃÏø’∫–
@@ -272,7 +253,6 @@ void Scene01::SetupMaterial(Material& pbr_mat, int mat_id)
         //ÃÏø’∫–…Ë÷√‰÷»æ◊¥Ã¨
         pbr_mat.SetSample("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
         pbr_mat.SetRenderState(RenderStates::RSNoCull.Get(), RenderStates::DSSLessEqual.Get(), 0);
-        
 	}
 }
 }

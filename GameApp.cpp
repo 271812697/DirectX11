@@ -4,16 +4,12 @@
 #include<filesystem>
 #include"RenderState.h"
 #include"TextureManager.h"
-#include"Camera.h"
-#include"CameraController.h"
 #include"Texture2D.h"
 #include"util/global.h"
 #include"example/scene01.h"
 using namespace DirectX;
 scene::Scene* cur=nullptr;
 TextureManager textureManager;
-FirstPersonCamera g_Fcamera;
-FirstPersonCameraController controller;
 TextureCube* skybox = nullptr;
 TextureCube* irradiance = nullptr;
 TextureCube* prefilter_map = nullptr;
@@ -34,10 +30,6 @@ bool GameApp::Init()
     textureManager.Init(m_pd3dDevice.Get());
     m_pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_pd3dImmediateContext->IASetInputLayout(global::m_pVertexLayout.Get());
-    //初始化相机和相机控制器
-    controller.InitCamera(&g_Fcamera);
-    g_Fcamera.SetViewPort(m_ScreenViewport);
-    g_Fcamera.SetFrustum(45, this->AspectRatio(), 0.1, 1000.0);
     cur=new scene::Scene01("01");
     cur->Init();
     return true;
@@ -45,12 +37,10 @@ bool GameApp::Init()
 void GameApp::OnResize()
 {
     D3DApp::OnResize();
-    g_Fcamera.SetViewPort(m_ScreenViewport);
-    g_Fcamera.SetFrustum(45, this->AspectRatio(), 0.1, 1000.0);
+  
 }
 void GameApp::UpdateScene(float dt)
 {
-    controller.Update(dt);
     cur->OnImGuiRender();
 }
 void GameApp::DrawScene()

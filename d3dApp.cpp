@@ -1,6 +1,7 @@
 #include "d3dApp.h"
 #include "d3dUtil.h"
 #include "DXTrace.h"
+#include"util/global.h"
 #include <sstream>
 
 
@@ -22,9 +23,10 @@ MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	// before CreateWindow returns, and thus before m_hMainWnd is valid.
 	return g_pd3dApp->MsgProc(hwnd, msg, wParam, lParam);
 }
-D3DApp* app_instance = nullptr;
+static D3DApp* app_instance = nullptr;
 D3DApp* D3DApp::Get()
 {
+	CORE_ASERT(app_instance != nullptr, "D3DApp is not Intialize!");
     return app_instance;
 }
 D3DApp::D3DApp(HINSTANCE hInstance)
@@ -84,7 +86,7 @@ int D3DApp::Run()
 {
 	MSG msg = { 0 };
 
-	m_Timer.Reset();
+	global::GetTimer().Reset();
 
 	while (msg.message != WM_QUIT)
 	{
@@ -95,7 +97,7 @@ int D3DApp::Run()
 		}
 		else
 		{
-			m_Timer.Tick();
+			global::GetTimer().Tick();
 
 			if (!m_AppPaused)
 			{
@@ -105,7 +107,7 @@ int D3DApp::Run()
 				ImGui_ImplWin32_NewFrame();
 				ImGui::NewFrame();
 #endif
-				UpdateScene(m_Timer.DeltaTime());
+				UpdateScene(global::GetTimer().DeltaTime());
 				DrawScene();
 			}
 			else
@@ -233,12 +235,12 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		if (LOWORD(wParam) == WA_INACTIVE)
 		{
 			m_AppPaused = true;
-			m_Timer.Stop();
+			global::GetTimer().Stop();
 		}
 		else
 		{
 			m_AppPaused = false;
-			m_Timer.Start();
+			global::GetTimer().Start();
 		}
 		return 0;
 
@@ -303,7 +305,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_ENTERSIZEMOVE:
 		m_AppPaused = true;
 		m_Resizing = true;
-		m_Timer.Stop();
+		global::GetTimer().Stop();
 		return 0;
 
 		// WM_EXITSIZEMOVE is sent when the user releases the resize bars.
@@ -311,7 +313,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_EXITSIZEMOVE:
 		m_AppPaused = false;
 		m_Resizing = false;
-		m_Timer.Start();
+		global::GetTimer().Start();
 		OnResize();
 		return 0;
 
@@ -574,7 +576,7 @@ void D3DApp::CalculateFrameStats()
 
 	frameCnt++;
 
-	if ((m_Timer.TotalTime() - timeElapsed) >= 1.0f)
+	if ((global::GetTimer().TotalTime() - timeElapsed) >= 1.0f)
 	{
 		float fps = (float)frameCnt; // fps = frameCnt / 1
 		float mspf = 1000.0f / fps;
