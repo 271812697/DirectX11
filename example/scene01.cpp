@@ -12,15 +12,18 @@ namespace scene{
 void Scene01::Init()
 {
     PrecomputeIBL("resources\\HDRI\\Sky.hdr");
-	resource_manager.Add(01, MakeAsset<asset::Shader>("SkyBoxV.hlsl"));
-	resource_manager.Add(02, MakeAsset<asset::Shader>("PBR.hlsl"));
+	resource_manager.Add(01, MakeAsset<asset::Shader>("HLSL\\SkyBoxV.hlsl"));
+	resource_manager.Add(02, MakeAsset<asset::Shader>("HLSL\\PBR.hlsl"));
 	resource_manager.Add(03, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(01)));
 	resource_manager.Add(04, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(02)));
 	sphere = CreateEntity("sphere");
-	if (auto& mat = sphere.AddComponent<component::Material>(resource_manager.Get<component::Material>(04));true) {
+
+	sphere.AddComponent<component::Mesh>(component::Primitive::Sphere);
+   
+    sphere.AddComponent<component::Spotlight>(color::white,3.8f,4.0f, 10.0f, 45.0f);	
+    if (auto& mat = sphere.AddComponent<component::Material>(resource_manager.Get<component::Material>(04));true) {
 		SetupMaterial(mat,01);
 	}
-	sphere.AddComponent<component::Mesh>(component::Primitive::Sphere);
 	sky= CreateEntity("skybox");
 	sky.AddComponent<component::Mesh>(component::Primitive::Sphere);
 	if (auto& mat = sky.AddComponent<component::Material>(resource_manager.Get<component::Material>(03)); true) {
@@ -37,14 +40,13 @@ void Scene01::OnSceneRender()
 	mat.SetVal("Proj", it);
 	mat.Bind();
 	sky.GetComponent<component::Mesh>().Draw();
-    auto& spheremat = sphere.GetComponent<component::Material>();
-    spheremat.Bind();
+    sphere.GetComponent<component::Material>().Bind();
     sphere.GetComponent<component::Mesh>().Draw();
 }
 
 void Scene01::OnImGuiRender()
 {
-    auto callback = [](component::Material* e) {
+    auto callback = [](component::Material* e,Entity& s) {
         auto it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewMatrixXM());
         e->SetVal("g_View", it);
         it = DirectX::XMMatrixTranspose(g_Fcamera.GetProjMatrixXM());
@@ -85,9 +87,15 @@ void Scene01::OnImGuiRender()
         e->SetVal("sample_roughness", sample_roughness);
         e->SetVal("sample_ao", sample_ao);
         e->SetVal("uv_scale", uv_scale, 2);
+        auto& l = s.GetComponent<component::Spotlight>();
+        //float4  sl_position;
+        //float4  sl_direction;
+        e->SetVal("sl_position", g_Fcamera.GetPosition());
+        e->SetVal("sl_direction", g_Fcamera.GetLookAxis());
     };
     auto mat=sphere.GetComponent<component::Material>();
-    callback(&mat);
+    callback(&mat,sphere);
+   
 }
 void Scene01::PrecomputeIBL(const std::string& hdri)
 {
@@ -96,7 +104,7 @@ void Scene01::PrecomputeIBL(const std::string& hdri)
 
     {
         EffectHelper effect;
-        effect.CreateShaderFromFile("CS", L"CS.hlsl", m_pd3dDevice, "CS", "cs_5_0", nullptr, nullptr);
+        effect.CreateShaderFromFile("CS", L"HLSL\\CS.hlsl", m_pd3dDevice, "CS", "cs_5_0", nullptr, nullptr);
         EffectPassDesc pass;
         pass.nameVS = "";
         pass.nameGS = "";
@@ -121,7 +129,7 @@ void Scene01::PrecomputeIBL(const std::string& hdri)
     }
     {
         EffectHelper effect;
-        effect.CreateShaderFromFile("CS", L"irradiance_map.hlsl", m_pd3dDevice, "CS", "cs_5_0", nullptr, nullptr);
+        effect.CreateShaderFromFile("CS", L"HLSL\\irradiance_map.hlsl", m_pd3dDevice, "CS", "cs_5_0", nullptr, nullptr);
         EffectPassDesc pass;
         pass.nameVS = "";
         pass.nameGS = "";
@@ -147,7 +155,7 @@ void Scene01::PrecomputeIBL(const std::string& hdri)
 
     {
         EffectHelper effect;
-        effect.CreateShaderFromFile("CS", L"prefilter_envmap.hlsl", m_pd3dDevice, "CS", "cs_5_0", nullptr, nullptr);
+        effect.CreateShaderFromFile("CS", L"HLSL\\prefilter_envmap.hlsl", m_pd3dDevice, "CS", "cs_5_0", nullptr, nullptr);
         EffectPassDesc pass;
         pass.nameVS = "";
         pass.nameGS = "";
@@ -189,7 +197,7 @@ void Scene01::PrecomputeIBL(const std::string& hdri)
 
     {
         EffectHelper effect;
-        effect.CreateShaderFromFile("CS", L"environment_BRDF.hlsl", m_pd3dDevice, "CS", "cs_5_0", nullptr, nullptr);
+        effect.CreateShaderFromFile("CS", L"HLSL\\environment_BRDF.hlsl", m_pd3dDevice, "CS", "cs_5_0", nullptr, nullptr);
         EffectPassDesc pass;
         pass.nameVS = "";
         pass.nameGS = "";
@@ -219,6 +227,19 @@ void Scene01::SetupMaterial(Material& pbr_mat, int mat_id)
         pbr_mat.SetVal("specular", 0.5f);
         pbr_mat.SetSample("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
 
+        //พÛนโ
+        /*
+        cbuffer SL : register(b2) {
+    float4  sl_color;
+    float4  sl_position;
+    float4  sl_direction;
+    float sl_intensity;
+    float sl_inner_cos;
+    float sl_outer_cos;
+    float sl_range;
+} 
+        */
+
         pbr_mat.setSV("irradiance_map", irradiance->GetShaderResource());
         pbr_mat.setSV("prefilter_map", prefilter_map->GetShaderResource());
         pbr_mat.setSV("BRDF_LUT", BRDF_LUT->GetShaderResource());
@@ -233,6 +254,16 @@ void Scene01::SetupMaterial(Material& pbr_mat, int mat_id)
         pbr_mat.setSV("metallic_map", metallic_texture);
         pbr_mat.setSV("roughness_map", roughness_texture);
         pbr_mat.setSV("ao_map", ao_texture);
+
+        auto& l = sphere.GetComponent<component::Spotlight>();
+        
+        pbr_mat.SetVal("sl_color",l.color);
+        pbr_mat.SetVal("sl_intensity", l.intensity);
+        pbr_mat.SetVal("sl_inner_cos",l.GetInnerCosine() );
+        pbr_mat.SetVal("sl_outer_cos", l.GetOuterCosine());
+        pbr_mat.SetVal("sl_range", l.range);
+
+
 
 	}
 	else if (mat_id == 2) {

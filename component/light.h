@@ -19,7 +19,7 @@ namespace component {
     class PointLight : public Light {
     public:
         float linear, quadratic;
-        float range = std::numeric_limits<float>::max();
+        float range = 1e9;
 
         using Light::Light;
 
@@ -31,10 +31,15 @@ namespace component {
     public:
         float inner_cutoff;  // angle in degrees at the base of the inner cone
         float outer_cutoff;  // angle in degrees at the base of the outer cone
-        float range = std::numeric_limits<float>::max();
+        float range = 1e9;
 
         using Light::Light;
+        Spotlight(DirectX::XMFLOAT3 c, float e, float range, float inner_cutoff = 15.0f, float outer_cutoff = 30.0f) :Light(c,e),range(range)
+        ,inner_cutoff(inner_cutoff), outer_cutoff(outer_cutoff)
+        {
 
+
+        }
         void SetCutoff(float range, float inner_cutoff = 15.0f, float outer_cutoff = 30.0f);
         float GetInnerCosine() const;
         float GetOuterCosine() const;

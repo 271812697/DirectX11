@@ -12,10 +12,8 @@ file(GLOB EXAMPLE ${PROJECT_SOURCE_DIR}/example/*.*)
 file(GLOB ASSET ${PROJECT_SOURCE_DIR}/asset/*.*)
 file(GLOB SCENE ${PROJECT_SOURCE_DIR}/scene/*.*)
 file(GLOB COMPONENT ${PROJECT_SOURCE_DIR}/component/*.*)
-#收集字体文件
-file(GLOB FONT ${PROJECT_SOURCE_DIR}/*.ttf)
-#收集着色器文件
-file(GLOB HLSL ${PROJECT_SOURCE_DIR}/*.hlsl)
+file(GLOB HLSL ${PROJECT_SOURCE_DIR}/HLSL/*.*)
+
 #整理目录
 source_group(imgui FILES ${IMGUI})
 source_group(util FILES ${UTIL})
@@ -24,7 +22,8 @@ source_group(core FILES ${CORE})
 source_group(asset FILES ${ASSET})
 source_group(scene FILES ${SCENE})
 source_group(example FILES ${EXAMPLE})
-add_executable(DirectX11 WIN32 ${SRC} ${HEAD} ${IMGUI} ${UTIL} ${CORE} ${ASSET} ${EXAMPLE} ${SCENE} ${COMPONENT})
+source_group(shader FILES ${HLSL})
+add_executable(DirectX11 WIN32 ${SRC} ${HEAD} ${IMGUI} ${UTIL} ${CORE} ${ASSET} ${EXAMPLE} ${SCENE} ${COMPONENT} ${HLSL})
 #设置工作目录
 set_property(TARGET DirectX11 PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 

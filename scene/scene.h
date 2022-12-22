@@ -36,7 +36,19 @@ namespace scene {
     private:
 
     };
-
+    namespace color {
+        // some commonly used color presets
+        static    DirectX::XMFLOAT3 white{ 1.0f,1.0f,1.0f };
+        static   DirectX::XMFLOAT3 black{ 0.0f,0.0f,0.0f };
+        static   DirectX::XMFLOAT3 red{ 1.0f, 0.0f, 0.0f };
+        static   DirectX::XMFLOAT3 green{ 0.0f, 1.0f, 0.0f };
+        static   DirectX::XMFLOAT3 lime{ 0.5f, 1.0f, 0.0f };
+        static   DirectX::XMFLOAT3 blue{ 0.0f, 0.0f, 1.0f };
+        static   DirectX::XMFLOAT3 cyan{ 0.0f, 1.0f, 1.0f };
+        static   DirectX::XMFLOAT3 yellow{ 1.0f, 1.0f, 0.0f };
+        static   DirectX::XMFLOAT3 orange{ 1.0f, 0.5f, 0.0f };
+        static   DirectX::XMFLOAT3 purple{ 0.5f, 0.0f, 1.0f };
+    }
 
 
 }

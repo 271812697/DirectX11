@@ -1,3 +1,5 @@
+
+
 cbuffer CBChangesEveryDrawing : register(b0)
 {
     matrix g_World;
@@ -49,7 +51,6 @@ VertexOut main(VertexIn vIn)
 
 
 #endif
-#define PS
 #ifdef PS
 struct PixelIn
 {
@@ -1397,13 +1398,16 @@ float3 EvaluateASL(const Pixel px, const float3 pos, const float3 dir, float ran
     float3 L = normalize(l);
 
     // distance attenuation uses a cheap linear falloff (does not follow the inverse square law)
-    float ds = dot(dir, l); // projected distance along the spotlight beam direction
+    float ds = -dot(dir, l); // projected distance along the spotlight beam direction
+   
     float da = 1.0 - clamp01(ds / range);
-
+    
     // angular attenuation fades out from the inner to the outer cone
-    float cosine = dot(dir, L);
+    float cosine = -dot(dir, L); 
+   
     float aa = clamp01((cosine - outer_cos) / (inner_cos - outer_cos));
     float attenuation = da * aa;
+  
 
     return attenuation <= 0.0 ? float3(0.0,0.0,0.0) : (EvaluateAL(px, L) * attenuation);
 }
@@ -1554,8 +1558,9 @@ PixelOut main(PixelIn pIn)
 
     Lo += EvaluateIBL(px) * max(2.0, 0.5);
     Lo += EvaluateADL(px, normalize(dl_direction.xyz), 1.0);//* dl_color.rgb * dl_intensity;
-   // float3 sc = EvaluateASL(px, sl_position.xyz, sl_direction.xyz, sl_range, sl_inner_cos, sl_outer_cos);
-   // Lo += sc * sl_color.rgb * sl_intensity;
+    float3 sc = EvaluateASL(px, sl_position.xyz, sl_direction.xyz, sl_range, sl_inner_cos, sl_outer_cos);
+    Lo += sc * sl_color.rgb * sl_intensity;
+   
     //color = float4(Lo + Le, px.albedo.a);
 
 
