@@ -227,6 +227,7 @@ void Scene01::SetupMaterial(Material& pbr_mat, int mat_id)
         pbr_mat.SetVal("ao", 1.0f);;
         pbr_mat.SetVal("specular", 0.5f);
         pbr_mat.SetSample("g_SamLinear", RenderStates::SSAnistropicWrap16x.Get());
+        pbr_mat.SetSample("g_SSAnistropicClamp16x",RenderStates::SSAnistropicClamp16x.Get());
         pbr_mat.setSV("irradiance_map", irradiance->GetShaderResource());
         pbr_mat.setSV("prefilter_map", prefilter_map->GetShaderResource());
         pbr_mat.setSV("BRDF_LUT", BRDF_LUT->GetShaderResource());

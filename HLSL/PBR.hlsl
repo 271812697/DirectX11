@@ -64,6 +64,7 @@ struct PixelIn
 };
 
 SamplerState g_SamLinear : register(s0);
+SamplerState g_SSAnistropicClamp16x : register(s1);
 // sampler binding points (texture units) 17-19 are reserved for PBR IBL
 TextureCube irradiance_map : register(t17);
 TextureCube prefilter_map : register(t18);
@@ -1239,7 +1240,7 @@ void InitPixel(inout Pixel px, const float3 camera_pos)
 
     px.ao = sample_ao ? ao_map.Sample(g_SamLinear, px.uv).rrr : float3(ao,ao,ao);
     px.emission = sample_emission ? float4(Gamma2Linear(emission_map.Sample(g_SamLinear, px.uv).rgb), 1.0) : emission;
-    px.DFG = BRDF_LUT.Sample(g_SamLinear, float2(px.NoV, px.roughness)).rgb;
+    px.DFG = BRDF_LUT.Sample(g_SSAnistropicClamp16x, float2(px.NoV, px.roughness)).rgb;
 
     // standard model, insulators or metals, with optional anisotropy
     if (model.x == 1)
@@ -1366,7 +1367,6 @@ float3 EvaluateIBL(const Pixel px)
         Fr *= (1.0 - Fcc);
         Fr += ComputeLD(px.GR, px.clearcoat_roughness) * Fcc;
     }
-
     return Fr + Fd + Ft;
 }
 
