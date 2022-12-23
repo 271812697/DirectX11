@@ -15,7 +15,7 @@ void Scene01::Init()
 	resource_manager.Add(03, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(01)));
 	resource_manager.Add(04, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(02)));
 	sphere = CreateEntity("sphere");
-	sphere.AddComponent<component::Mesh>(component::Primitive::Sphere);
+	sphere.AddComponent<component::Mesh>(component::Primitive::Tetrahedron);
     sphere.AddComponent<component::Spotlight>(color::white,3.8f,4.0f, 10.0f, 45.0f);	
     if (auto& mat = sphere.AddComponent<component::Material>(resource_manager.Get<component::Material>(04));true) {
 		SetupMaterial(mat,01);
