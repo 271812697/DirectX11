@@ -4,22 +4,21 @@
 #include<filesystem>
 #include"RenderState.h"
 #include"TextureManager.h"
-#include"Texture2D.h"
+
 #include"util/global.h"
 #include"example/scene01.h"
 using namespace DirectX;
-scene::Scene* cur=nullptr;
+
 TextureManager textureManager;
-TextureCube* skybox = nullptr;
-TextureCube* irradiance = nullptr;
-TextureCube* prefilter_map = nullptr;
-Texture2D* BRDF_LUT = nullptr;
+
 GameApp::GameApp(HINSTANCE hInstance)
     : D3DApp(hInstance)
 {
 }
 GameApp::~GameApp()
 {
+    
+  
 }
 bool GameApp::Init()
 {
@@ -30,7 +29,8 @@ bool GameApp::Init()
     textureManager.Init(m_pd3dDevice.Get());
     m_pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_pd3dImmediateContext->IASetInputLayout(global::m_pVertexLayout.Get());
-    cur=new scene::Scene01("01");
+    cur= std::make_shared < scene::Scene01>("01");
+   
     cur->Init();
     return true;
 }

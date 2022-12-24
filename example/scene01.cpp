@@ -5,6 +5,7 @@
 #include"../RenderState.h"
 #include"../TextureManager.h"
 #include"../ui.h"
+#include"../util/math.h"
 extern TextureManager textureManager;
 namespace scene{
 void Scene01::Init()
@@ -28,33 +29,42 @@ void Scene01::Init()
     camera = CreateEntity("camera");
     auto& c=camera.AddComponent<component::FirstPersonCamera>();
     camera.AddComponent<component::FirstPersonCameraController>().InitCamera(&c);
+    
+    AddFBO(global::GetWindowInstance()->m_ClientWidth, global::GetWindowInstance()->m_ClientWidth);
+    auto& fbo= FBOs[0];
+    fbo.AddColorTexture(1);
+    
 }
 
 void Scene01::OnSceneRender()
 {
+    auto& fbo = FBOs[0];
+    
 	auto& mat = sky.GetComponent<component::Material>();
 	auto it = DirectX::XMMatrixTranspose(camera.GetComponent<component::FirstPersonCamera>().GetViewMatrixXM());
 	mat.SetVal("View", it);
 	it = DirectX::XMMatrixTranspose(camera.GetComponent<component::FirstPersonCamera>().GetProjMatrixXM());
 	mat.SetVal("Proj", it);
 	mat.Bind();
+    fbo.Bind();
 	sky.GetComponent<component::Mesh>().Draw();
+    
     sphere.GetComponent<component::Material>().Bind();
     sphere.GetComponent<component::Mesh>().Draw();
+    static bool index = 0;
+    fbo.UnBind();
+    Ui::NewInspector();
+    ImGui::Checkbox("Depth", &index);
+    Ui::EndInspector();
+    if (index)
+        fbo.Draw(-1);
+    else fbo.Draw(0);
 }
 
 void Scene01::OnImGuiRender()
 {
     auto callback = [this](component::Material* e,Entity& s) {
-        auto& g_Fcamera = camera.GetComponent<component::FirstPersonCamera>();
-        auto it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewMatrixXM());
-        e->SetVal("g_View", it);
-        it = DirectX::XMMatrixTranspose(g_Fcamera.GetProjMatrixXM());
-        e->SetVal("g_Proj", it);
-        it = DirectX::XMMatrixIdentity();
-        e->SetVal("g_World", it);
-        e->SetVal("position", g_Fcamera.GetPosition());
-        Ui::NewInspector();
+        static bool rotateModel = true;
         static float metalic = 0.1;
         static float roughness = 0.1;
         static bool sample_albedo = 0;
@@ -63,7 +73,9 @@ void Scene01::OnImGuiRender()
         static bool sample_roughness = 0;
         static bool sample_ao = 0;
         static float albedo[4] = { 1.0,0.0,0.1,1.0 };
-        static float uv_scale[2] = { 2,2 };
+        static float uv_scale[2] = { 2,2 }; 
+        static DirectX::XMFLOAT3 rotate{ 3.141592654 ,0,0 };
+        Ui::NewInspector();
         ImGui::ColorEdit4("albedo", albedo);
         ImGui::SliderFloat("metalic", &metalic, 0.0, 1.0);
         ImGui::SliderFloat("roughness", &roughness, 0.0, 1.0);
@@ -77,7 +89,17 @@ void Scene01::OnImGuiRender()
         Ui::DrawTooltip("try");
         ImGui::Checkbox("sample_ao", &sample_ao);
         ImGui::SliderFloat2("uv_scale", uv_scale, 1, 10);
+        ImGui::Checkbox("Rotate",&rotateModel);
         Ui::EndInspector();
+        auto& g_Fcamera = camera.GetComponent<component::FirstPersonCamera>();
+        auto it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewMatrixXM());
+        e->SetVal("g_View", it);
+        it = DirectX::XMMatrixTranspose(g_Fcamera.GetProjMatrixXM());
+        e->SetVal("g_Proj", it);
+       if(rotateModel)
+        s.GetComponent<component::Transform>().Rotate(rotate * global::GetTimer().DeltaTime());
+        e->SetVal("g_World", DirectX::XMMatrixTranspose(s.GetComponent<component::Transform>().GetLocalToWorldMatrixXM()));
+        e->SetVal("position", g_Fcamera.GetPosition());
         e->SetVal("roughness", roughness);
         e->SetVal("metalness", metalic);
         e->SetVal("albedo", albedo, 4);
@@ -88,8 +110,6 @@ void Scene01::OnImGuiRender()
         e->SetVal("sample_ao", sample_ao);
         e->SetVal("uv_scale", uv_scale, 2);
         auto& l = s.GetComponent<component::Spotlight>();
-        //float4  sl_position;
-        //float4  sl_direction;
         e->SetVal("sl_position", g_Fcamera.GetPosition());
         e->SetVal("sl_direction", g_Fcamera.GetLookAxis());
     };
@@ -115,7 +135,7 @@ void Scene01::PrecomputeIBL(const std::string& hdri)
         pass.nameCS = "CS";
         effect.AddEffectPass("CSPASS", m_pd3dDevice, &pass);
         TextureCube* cubemap = new TextureCube(m_pd3dDevice, 2048, 2048, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_BIND_UNORDERED_ACCESS);
-        skybox = new TextureCube(m_pd3dDevice, 2048, 2048, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_BIND_SHADER_RESOURCE);
+        skybox = std::make_shared<TextureCube>(m_pd3dDevice, 2048, 2048, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_BIND_SHADER_RESOURCE);
         CD3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc(D3D11_UAV_DIMENSION_TEXTURE2DARRAY, DXGI_FORMAT_R32G32B32A32_FLOAT);
         ID3D11UnorderedAccessView* ppUAView = nullptr;
         m_pd3dDevice->CreateUnorderedAccessView(cubemap->GetTexture(), &uavDesc, &ppUAView);
@@ -140,7 +160,7 @@ void Scene01::PrecomputeIBL(const std::string& hdri)
         pass.nameCS = "CS";
         effect.AddEffectPass("CSPASS", m_pd3dDevice, &pass);
         TextureCube* cubemap = new TextureCube(m_pd3dDevice, 128, 128, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_BIND_UNORDERED_ACCESS);
-        irradiance = new TextureCube(m_pd3dDevice, 128, 128, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_BIND_SHADER_RESOURCE);
+        irradiance = std::make_shared < TextureCube>(m_pd3dDevice, 128, 128, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_BIND_SHADER_RESOURCE);
         CD3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc(D3D11_UAV_DIMENSION_TEXTURE2DARRAY, DXGI_FORMAT_R32G32B32A32_FLOAT);
         ID3D11UnorderedAccessView* ppUAView = nullptr;
         m_pd3dDevice->CreateUnorderedAccessView(cubemap->GetTexture(), &uavDesc, &ppUAView);
@@ -166,7 +186,7 @@ void Scene01::PrecomputeIBL(const std::string& hdri)
         pass.nameCS = "CS";
         effect.AddEffectPass("CSPASS", m_pd3dDevice, &pass);
         TextureCube* cubemap = new TextureCube(m_pd3dDevice, 2048, 2048, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_BIND_UNORDERED_ACCESS);
-        prefilter_map = new TextureCube(m_pd3dDevice, 2048, 2048, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_BIND_SHADER_RESOURCE);
+        prefilter_map = std::make_shared < TextureCube>(m_pd3dDevice, 2048, 2048, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_BIND_SHADER_RESOURCE);
         D3D11_BOX box = { 0,0,0,2048,2048,1 };
         for (int i = 0; i < 6; i++) {
 
@@ -208,7 +228,7 @@ void Scene01::PrecomputeIBL(const std::string& hdri)
         pass.nameCS = "CS";
         effect.AddEffectPass("CSPASS", m_pd3dDevice, &pass);
         Texture2D* BRDF = new Texture2D(m_pd3dDevice, 1024, 1024, DXGI_FORMAT_R16G16B16A16_FLOAT, 1, D3D11_BIND_UNORDERED_ACCESS);
-        BRDF_LUT = new Texture2D(m_pd3dDevice, 1024, 1024, DXGI_FORMAT_R16G16B16A16_FLOAT, 1, D3D11_BIND_SHADER_RESOURCE);
+        BRDF_LUT = std::make_shared < Texture2D>(m_pd3dDevice, 1024, 1024, DXGI_FORMAT_R16G16B16A16_FLOAT, 1, D3D11_BIND_SHADER_RESOURCE);
         effect.SetUnorderedAccessByName("BRDF_LUT", BRDF->GetUnorderedAccess());
         effect.GetEffectPass("CSPASS")->Apply(context);
         context->Dispatch(32, 32, 1);

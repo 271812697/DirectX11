@@ -189,10 +189,10 @@ namespace component {
 
 		static const float data[] = {
 			// position        uv
-			-1.0f, -1.0f,  0.0f, 0.0f,
-			+1.0f, -1.0f,  1.0f, 0.0f,
-			+1.0f, +1.0f,  1.0f, 1.0f,
-			-1.0f, +1.0f,  0.0f, 1.0f
+			-1.0f, -1.0f,  0.0f, 1.0f,
+			+1.0f, -1.0f,  1.0f, 1.0f,
+			+1.0f, +1.0f,  1.0f, 0.0f,
+			-1.0f, +1.0f,  0.0f, 0.0f
 		};
 
 		std::vector<Vertex> vertices;

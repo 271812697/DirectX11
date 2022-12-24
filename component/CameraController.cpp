@@ -41,9 +41,8 @@ namespace component {
         //初始化相机和相机控制器  
         m_pCamera = pCamera;
         auto instance= D3DApp::Get();
-        
         m_pCamera->SetViewPort(instance->m_ScreenViewport);
-        m_pCamera->SetFrustum(45, instance->AspectRatio(), 0.1, 1000.0);
+        m_pCamera->SetFrustum(45, instance->AspectRatio(), 0.1, 100.0);
       
     }
 

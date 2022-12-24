@@ -7,6 +7,7 @@
 #include"../RenderState.h"
 #include"../EffectHelper.h"
 #include"../component/mesh.h"
+#include "../d3dApp.h"
 namespace global {
 	template<typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
@@ -14,7 +15,12 @@ namespace global {
 	{
 		ComPtr<ID3D11Device> m_pDevice=nullptr;
 		ComPtr<ID3D11DeviceContext> m_pDeviceContext = nullptr;
+
 	};
+	inline D3DApp* GetWindowInstance() {
+		return D3DApp::Get();
+	}
+
 	inline GraphicI graphic;
 	//默认的顶点布局
 	inline ComPtr<ID3D11InputLayout> m_pVertexLayout = nullptr;
@@ -43,8 +49,11 @@ namespace global {
 		graphic.m_pDevice = D;
 		graphic.m_pDeviceContext = C;
 
+
+
 	}
 	inline GraphicI& GetGraphicI() {
+		CORE_ASERT(graphic.m_pDevice != nullptr,"you must INit Graphic");
 		return graphic;
 	}
 	// 以下不可删除

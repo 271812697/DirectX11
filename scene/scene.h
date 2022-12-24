@@ -5,6 +5,7 @@
 #include "../component/all.h"
 #include "entity.h"
 #include "resource.h"
+#include"../asset/fbo.h"
 using namespace component;
 namespace scene {
     class Scene {
@@ -16,10 +17,10 @@ namespace scene {
     protected:
         ResourceManager resource_manager;
         //std::map<GLuint, UBO> UBOs;  // indexed by uniform buffer's binding point
-        //std::map<GLuint, FBO> FBOs;  // indexed by the order of creation
+        std::map<UINT, asset::FBO> FBOs;  // indexed by the order of creation
 
         //void AddUBO(GLuint shader_id);
-        //void AddFBO(GLuint width, GLuint height);
+        void AddFBO(UINT width, UINT height);
 
         Entity CreateEntity(const std::string& name);
         void DestroyEntity(Entity entity);

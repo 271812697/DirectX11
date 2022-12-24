@@ -1,5 +1,10 @@
 #include"scene.h"
 namespace scene {
+	void Scene::AddFBO(UINT width, UINT height)
+	{
+		UINT key= FBOs.size();
+		FBOs.try_emplace(key, width, height);  // construct FBO in-place
+	}
 	Entity Scene::CreateEntity(const std::string& name)
 	{
 		Entity e = { name, registry.create(), &registry };

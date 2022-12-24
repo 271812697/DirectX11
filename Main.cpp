@@ -21,7 +21,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE prevInstance,
 	if (!theApp.Init())
 		return 0;
 	int res=theApp.Run();
-	::core::Log::Shutdown();
+	//::core::Log::Shutdown();
 	return res;
 }
 
