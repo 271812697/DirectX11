@@ -1570,7 +1570,7 @@ PixelOut main(PixelIn pIn)
 
    
     PixelOut p;
-    p.color = float4(Linear2Gamma(ApproxACES(Lo)),1.0);
+    p.color = float4(Lo,1.0);
     return p;
 
 }

@@ -84,10 +84,10 @@ const float weight[10] = float[] (
 
 
 
-Texture2D<float4> ping;
-Texture2D<float4> pong;
+RWTexture2D<float4> ping;
+RWTexture2D<float4> pong;
 
-uniform bool horizontal;
+uint horizontal;
 
 void GaussianBlurH(const uint2 coord)
 {

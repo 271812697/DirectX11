@@ -24,9 +24,10 @@ namespace asset {
 	public:
 		void AddColorTexture(UINT count);
 		void Draw(int index);
+		static void Draw(Texture2D);
 		void Bind();
 		void UnBind();
-		const Texture2D& GetColorTexture(UINT index) const;
+		Texture2D GetColorTexture(UINT index) ;
 		//void SetColorTexture();
 	};
 

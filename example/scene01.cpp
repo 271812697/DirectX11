@@ -14,7 +14,7 @@ void Scene01::Init()
 	resource_manager.Add(01, MakeAsset<asset::Shader>("HLSL\\SkyBoxV.hlsl"));
 	resource_manager.Add(02, MakeAsset<asset::Shader>("HLSL\\PBR.hlsl"));
     resource_manager.Add(05, MakeAsset<asset::Shader>("HLSL\\Light.hlsl"));
-    //resource_manager.Add(07, MakeAsset<asset::Shader>("HLSL\\bloom.hlsl"));
+    resource_manager.Add(07, MakeAsset<asset::Shader>("HLSL\\post_process01.hlsl"));
 
 	resource_manager.Add(03, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(1)));
 	resource_manager.Add(04, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(2)));
@@ -37,11 +37,11 @@ void Scene01::Init()
     bloomsphere = CreateEntity("bloomsphere");
     bloomsphere.AddComponent<component::Mesh>(component::Primitive::Sphere);
     bloomsphere.GetComponent<component::Transform>().Translate({ 0,1,0 }, 2.0);
-    bloomsphere.GetComponent<component::Transform>().SetScale({0.2,0.2,0.2});
+    bloomsphere.GetComponent<component::Transform>().SetScale({0.1,0.1,0.1});
     if (auto& mat = bloomsphere.AddComponent<component::Material>(resource_manager.Get<component::Material>(06)); true) {
         mat.SetVal("light_color",color::white);
-        mat.SetVal("light_intensity", 1.0f);
-        mat.SetVal("bloom_factor", 1.0f);
+        mat.SetVal("light_intensity", 1.8f);
+        mat.SetVal("bloom_factor", 2.0f);
     }
 
 
@@ -73,16 +73,26 @@ void Scene01::OnSceneRender()
     bloomsphere.GetComponent<component::Mesh>().Draw();
     
     fbo.UnBind();
+    //post-render
+    auto shader = resource_manager.Get<asset::Shader>(07);
+    shader->setSV("bloom_texture", post_bloom(fbo.GetColorTexture(1)).GetShaderResource());
+    shader->setSV("color_texture",fbo.GetColorTexture(0).GetShaderResource());
+    shader->SetSample("g_SamLinear", RenderStates::SSLinearClamp.Get());
+    shader->Apply();
+    component::Mesh::DrawQuad();
 
-   
+    /*
     
-    Ui::NewInspector();
+      Ui::NewInspector();
     static bool index = 0;
     ImGui::Checkbox("Depth", &index);
     Ui::EndInspector();
     if (index)
         fbo.Draw(-1);
-    else fbo.Draw(0);
+    else fbo.Draw(1);  
+    */
+
+
 
 }
 
@@ -276,6 +286,42 @@ void Scene01::PrecomputeIBL(const std::string& hdri)
         context->CopyResource(BRDF_LUT->GetTexture(), BRDF->GetTexture());
     }
 
+}
+Texture2D Scene01::post_bloom(Texture2D pic)
+{
+    ID3D11Device* m_pd3dDevice = global::GetGraphicI().m_pDevice.Get();
+    auto context = global::GetGraphicI().m_pDeviceContext.Get();  
+    D3D11_TEXTURE2D_DESC pDesc;
+    pic.GetTexture()->GetDesc(&pDesc); 
+    Texture2D res(m_pd3dDevice, pic.GetWidth(), pic.GetHeight(), pDesc.Format);
+    static EffectHelper effect;
+    static bool initflag = false;
+    if(!initflag)
+    {
+        initflag = true;
+        effect.CreateShaderFromFile("CS", L"HLSL\\bloom.hlsl", m_pd3dDevice, "main", "cs_5_0", nullptr, nullptr);
+        EffectPassDesc pass;
+        pass.nameVS = "";
+        pass.nameGS = "";
+        pass.namePS = "";
+        pass.nameDS = "";
+        pass.nameHS = "";
+        pass.nameCS = "CS";
+        effect.AddEffectPass("CSPASS", m_pd3dDevice, &pass);
+
+    }        
+    Texture2D ping(m_pd3dDevice,pic.GetWidth(),pic.GetHeight(),pDesc.Format,1, D3D11_BIND_UNORDERED_ACCESS);
+    Texture2D pong(m_pd3dDevice, pic.GetWidth(), pic.GetHeight(), pDesc.Format, 1, D3D11_BIND_UNORDERED_ACCESS);
+    context->CopyResource(ping.GetTexture(),pic.GetTexture());
+    effect.SetUnorderedAccessByName("ping",ping.GetUnorderedAccess());
+    effect.SetUnorderedAccessByName("pong", pong.GetUnorderedAccess());
+    for (int i = 0; i < 6; ++i) {
+            effect.GetConstantBufferVariable("horizontal")->SetUInt(i % 2 == 0); 
+            effect.GetEffectPass("CSPASS")->Apply(context);
+            context->Dispatch(pic.GetWidth() / 32, ping.GetHeight() / 18,1);
+    }
+    context->CopyResource(res.GetTexture(), pong.GetTexture());
+    return res;
 }
 void Scene01::SetupMaterial(Material& pbr_mat, int mat_id)
 {

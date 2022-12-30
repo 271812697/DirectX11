@@ -10,6 +10,7 @@ namespace scene{
         void OnSceneRender() override;
         void OnImGuiRender() override;
         void PrecomputeIBL(const std::string& hdri);
+        Texture2D post_bloom( Texture2D);
         void SetupMaterial(component::Material& pbr_mat, int mat_id);
         std::shared_ptr<TextureCube> skybox = nullptr;
         std::shared_ptr < TextureCube> irradiance = nullptr;

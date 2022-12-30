@@ -68,7 +68,7 @@ namespace component {
         Mesh(const std::shared_ptr<Mesh>& mesh_asset);
 
         void Draw() const;
-        //static void DrawQuad();
+        static void DrawQuad();
         //static void DrawGrid();
 
         // this field is only used by meshes that are loaded from external models

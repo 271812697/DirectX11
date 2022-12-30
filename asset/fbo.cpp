@@ -19,14 +19,14 @@ namespace asset {
 		auto& Graphic=global::GetGraphicI();
 		DXGI_SAMPLE_DESC sampleDesc{ 4,0 };
 		for (int i = 0; i < count; i++) {
-			this->color_attachments.push_back(std::make_shared<Texture2DMS>(Graphic.m_pDevice.Get(),width,height, DXGI_FORMAT_R8G8B8A8_UNORM,sampleDesc));
+			this->color_attachments.push_back(std::make_shared<Texture2DMS>(Graphic.m_pDevice.Get(),width,height, DXGI_FORMAT_R32G32B32A32_FLOAT,sampleDesc));
 		}
 	}
 	void FBO::Draw(int index)
 	{
 		if(index!=-1)
 		CORE_ASERT(index<this->color_attachments.size(),"the index is out of range");
-		static component::Mesh mesh(component::Primitive::Quad2D);
+		
 		static asset::Shader shader("HLSL//framebuffer.hlsl");
 		auto& Graphic = global::GetGraphicI();
 		UINT choice = 0;
@@ -38,8 +38,8 @@ namespace asset {
 
 
 		}else{
-		Texture2D screen(Graphic.m_pDevice.Get(), width, height, DXGI_FORMAT_R8G8B8A8_UNORM);
-		Graphic.m_pDeviceContext->ResolveSubresource(screen.GetTexture(),0,color_attachments[index]->GetTexture() ,0, DXGI_FORMAT_R8G8B8A8_UNORM);
+		Texture2D screen(Graphic.m_pDevice.Get(), width, height, DXGI_FORMAT_R32G32B32A32_FLOAT);
+		Graphic.m_pDeviceContext->ResolveSubresource(screen.GetTexture(),0,color_attachments[index]->GetTexture() ,0, DXGI_FORMAT_R32G32B32A32_FLOAT);
 
 	
 		shader.setSV("color_texture", screen.GetShaderResource());
@@ -47,7 +47,11 @@ namespace asset {
         shader.SetVal("index",choice);
 		shader.SetSample("g_SamLinear",RenderStates::SSLinearClamp.Get());
 		shader.Apply();
-		mesh.Draw();
+		component::Mesh::DrawQuad();
+	}
+	void FBO::Draw(Texture2D)
+	{
+      //
 	}
 	void FBO::Bind()
 	{
@@ -76,12 +80,12 @@ namespace asset {
 		Graphic.m_pDeviceContext->RSSetViewports(1, &instance->m_ScreenViewport);
 		Graphic.m_pDeviceContext->OMSetRenderTargets(1,instance->m_pRenderTargetView.GetAddressOf(), instance->m_pDepthStencilView.Get());
 	}
-	const Texture2D& FBO::GetColorTexture(UINT index) const
+    Texture2D FBO::GetColorTexture(UINT index) 
 	{
 		CORE_ASERT(index < this->color_attachments.size(), "the index is out of range");
 		auto& Graphic = global::GetGraphicI();
-		Texture2D screen(Graphic.m_pDevice.Get(), width, height, DXGI_FORMAT_R8G8B8A8_UNORM);
-		Graphic.m_pDeviceContext->ResolveSubresource(screen.GetTexture(), 0, color_attachments[index]->GetTexture(), 0, DXGI_FORMAT_R8G8B8A8_UNORM);
+		Texture2D screen(Graphic.m_pDevice.Get(), width, height, DXGI_FORMAT_R32G32B32A32_FLOAT);
+		Graphic.m_pDeviceContext->ResolveSubresource(screen.GetTexture(), 0, color_attachments[index]->GetTexture(), 0, DXGI_FORMAT_R32G32B32A32_FLOAT);
 		return screen;
 	}
 }

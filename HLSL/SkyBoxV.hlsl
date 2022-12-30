@@ -54,6 +54,6 @@ float4 main(Vertex v) : SV_TARGET
 {
     
     float3 color = g_TexCube.SampleLevel(g_SamLinear, v.PosW.xyz,0).rgb;
-    return float4(Linear2Gamma(ApproxACES(color)), 0.5);
+    return float4(color, 0.5);
 }
 #endif

@@ -515,4 +515,9 @@ namespace component {
 		E->IASetIndexBuffer(m_pIndices.Get(), DXGI_FORMAT_R32_UINT , 0);
 		E->DrawIndexed(n_tris, 0, 0);
 	}
+	void Mesh::DrawQuad()
+	{
+		static component::Mesh mesh(component::Primitive::Quad2D);
+		mesh.Draw();
+	}
 }
