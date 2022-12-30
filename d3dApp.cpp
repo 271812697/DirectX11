@@ -32,8 +32,8 @@ D3DApp* D3DApp::Get()
 D3DApp::D3DApp(HINSTANCE hInstance)
 	: m_hAppInst(hInstance),
 	m_MainWndCaption(L"DirectX11 Render"),
-	m_ClientWidth(1280),
-	m_ClientHeight(720),
+	m_ClientWidth(1600),
+	m_ClientHeight(900),
 	m_hMainWnd(nullptr),
 	m_AppPaused(false),
 	m_Minimized(false),

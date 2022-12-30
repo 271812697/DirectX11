@@ -18,6 +18,7 @@ namespace scene{
         Entity camera;
         Entity sky;
         Entity sphere;
+        Entity bloomsphere;
 
     };
 }

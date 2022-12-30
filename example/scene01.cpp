@@ -13,10 +13,14 @@ void Scene01::Init()
     PrecomputeIBL("resources\\HDRI\\Sky.hdr");
 	resource_manager.Add(01, MakeAsset<asset::Shader>("HLSL\\SkyBoxV.hlsl"));
 	resource_manager.Add(02, MakeAsset<asset::Shader>("HLSL\\PBR.hlsl"));
-	resource_manager.Add(03, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(01)));
-	resource_manager.Add(04, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(02)));
+    resource_manager.Add(05, MakeAsset<asset::Shader>("HLSL\\Light.hlsl"));
+    //resource_manager.Add(07, MakeAsset<asset::Shader>("HLSL\\bloom.hlsl"));
+
+	resource_manager.Add(03, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(1)));
+	resource_manager.Add(04, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(2)));
+    resource_manager.Add(06, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(5)));
 	sphere = CreateEntity("sphere");
-	sphere.AddComponent<component::Mesh>(component::Primitive::Tetrahedron);
+	sphere.AddComponent<component::Mesh>(component::Primitive::Sphere);
     sphere.AddComponent<component::Spotlight>(color::white,3.8f,4.0f, 10.0f, 45.0f);	
     if (auto& mat = sphere.AddComponent<component::Material>(resource_manager.Get<component::Material>(04));true) {
 		SetupMaterial(mat,01);
@@ -29,10 +33,23 @@ void Scene01::Init()
     camera = CreateEntity("camera");
     auto& c=camera.AddComponent<component::FirstPersonCamera>();
     camera.AddComponent<component::FirstPersonCameraController>().InitCamera(&c);
+
+    bloomsphere = CreateEntity("bloomsphere");
+    bloomsphere.AddComponent<component::Mesh>(component::Primitive::Sphere);
+    bloomsphere.GetComponent<component::Transform>().Translate({ 0,1,0 }, 2.0);
+    bloomsphere.GetComponent<component::Transform>().SetScale({0.2,0.2,0.2});
+    if (auto& mat = bloomsphere.AddComponent<component::Material>(resource_manager.Get<component::Material>(06)); true) {
+        mat.SetVal("light_color",color::white);
+        mat.SetVal("light_intensity", 1.0f);
+        mat.SetVal("bloom_factor", 1.0f);
+    }
+
+
     
-    AddFBO(global::GetWindowInstance()->m_ClientWidth, global::GetWindowInstance()->m_ClientWidth);
+    AddFBO(global::GetWindowInstance()->m_ClientWidth, global::GetWindowInstance()->m_ClientHeight);
+    AddFBO(global::GetWindowInstance()->m_ClientWidth, global::GetWindowInstance()->m_ClientHeight);
     auto& fbo= FBOs[0];
-    fbo.AddColorTexture(1);
+    fbo.AddColorTexture(2);
     
 }
 
@@ -51,18 +68,29 @@ void Scene01::OnSceneRender()
     
     sphere.GetComponent<component::Material>().Bind();
     sphere.GetComponent<component::Mesh>().Draw();
-    static bool index = 0;
+
+    bloomsphere.GetComponent<component::Material>().Bind();
+    bloomsphere.GetComponent<component::Mesh>().Draw();
+    
     fbo.UnBind();
+
+   
+    
     Ui::NewInspector();
+    static bool index = 0;
     ImGui::Checkbox("Depth", &index);
     Ui::EndInspector();
     if (index)
         fbo.Draw(-1);
     else fbo.Draw(0);
+
 }
 
 void Scene01::OnImGuiRender()
-{
+{  
+    //sphere
+    {
+    camera.GetComponent<component::FirstPersonCameraController>().Update(global::GetTimer().DeltaTime());
     auto callback = [this](component::Material* e,Entity& s) {
         static bool rotateModel = true;
         static float metalic = 0.1;
@@ -115,7 +143,20 @@ void Scene01::OnImGuiRender()
     };
     auto mat=sphere.GetComponent<component::Material>();
     callback(&mat,sphere);
-    camera.GetComponent<component::FirstPersonCameraController>().Update(global::GetTimer().DeltaTime());
+     }
+    //bloomsphere
+    {
+    
+    auto& mat = bloomsphere.GetComponent<component::Material>();
+    auto& g_Fcamera = camera.GetComponent<component::FirstPersonCamera>();
+    auto it = DirectX::XMMatrixTranspose(g_Fcamera.GetViewMatrixXM());
+    mat.SetVal("g_View", it);
+    it = DirectX::XMMatrixTranspose(g_Fcamera.GetProjMatrixXM());
+    mat.SetVal("g_Proj", it);
+    mat.SetVal("g_World", DirectX::XMMatrixTranspose(bloomsphere.GetComponent<component::Transform>().GetLocalToWorldMatrixXM()));
+    mat.SetVal("time",global::GetTimer().TotalTime());
+    }
+
    
 }
 void Scene01::PrecomputeIBL(const std::string& hdri)

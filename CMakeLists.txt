@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.22)
 project("DirectX11")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+#设置文件夹分类
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 #收集编译文件
 file(GLOB SRC ${PROJECT_SOURCE_DIR}/*.cpp)
 file(GLOB HEAD ${PROJECT_SOURCE_DIR}/*.h)
@@ -24,6 +26,21 @@ source_group(scene FILES ${SCENE})
 source_group(example FILES ${EXAMPLE})
 source_group(shader FILES ${HLSL})
 add_executable(DirectX11 WIN32 ${SRC} ${HEAD} ${IMGUI} ${UTIL} ${CORE} ${ASSET} ${EXAMPLE} ${SCENE} ${COMPONENT} ${HLSL})
+target_link_libraries(DirectX11 assimp)
+#
+# Assimp
+#
+add_subdirectory("assimp")
+set(ASSIMP_BUILD_ZLIB ON)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
+set(ASSIMP_BUILD_TESTS OFF)
+set(ASSIMP_INSTALL OFF)
+set(ASSIMP_INJECT_DEBUG_POSTFIX OFF)
+#分类
+set_target_properties(assimp PROPERTIES FOLDER "Assimp")
+set_target_properties(UpdateAssimpLibsDebugSymbolsAndDLLs PROPERTIES FOLDER "Assimp")
+set_target_properties(zlibstatic PROPERTIES FOLDER "Assimp")
+set_target_properties(assimp_cmd PROPERTIES FOLDER "Assimp")
 #设置工作目录
 set_property(TARGET DirectX11 PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
@@ -54,7 +71,6 @@ oleaut32.lib
 uuid.lib
 comdlg32.lib
 advapi32.lib
-assimp-vc143-mt.lib
 )
 #拷贝文件到工作目录
 #file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assimp-vc143-mt.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

@@ -28,11 +28,6 @@ namespace asset {
 		void UnBind();
 		const Texture2D& GetColorTexture(UINT index) const;
 		//void SetColorTexture();
-
-
-		
-
-
 	};
 
 }

@@ -33,11 +33,7 @@ namespace asset {
 
 		if(index==-1){
 			
-			//Texture2D depth(Graphic.m_pDevice.Get(), width, height, DXGI_FORMAT_R24G8_TYPELESS,1,
-				//D3D11_BIND_SHADER_RESOURCE);
-			
-			//Graphic.m_pDeviceContext->ResolveSubresource(depth.GetTexture(), 0,depth_Texture->GetTexture() , 0, DXGI_FORMAT_R24G8_TYPELESS);
-			shader.setSV("depth_texture", depth_Texture->GetShaderResource());
+		    shader.setSV("depth_texture", depth_Texture->GetShaderResource());
 			choice = 1;
 
 
@@ -46,7 +42,7 @@ namespace asset {
 		Graphic.m_pDeviceContext->ResolveSubresource(screen.GetTexture(),0,color_attachments[index]->GetTexture() ,0, DXGI_FORMAT_R8G8B8A8_UNORM);
 
 	
-		shader.setSV("color_texture",screen.GetShaderResource());
+		shader.setSV("color_texture", screen.GetShaderResource());
 		}
         shader.SetVal("index",choice);
 		shader.SetSample("g_SamLinear",RenderStates::SSLinearClamp.Get());
