@@ -39,7 +39,7 @@ void Scene01::Init()
     bloomsphere.GetComponent<component::Transform>().Translate({ 0,1,0 }, 2.0);
     bloomsphere.GetComponent<component::Transform>().SetScale({0.1,0.1,0.1});
     if (auto& mat = bloomsphere.AddComponent<component::Material>(resource_manager.Get<component::Material>(06)); true) {
-        mat.SetVal("light_color",color::white);
+        mat.SetVal("light_color",color::orange);
         mat.SetVal("light_intensity", 1.8f);
         mat.SetVal("bloom_factor", 2.0f);
     }
@@ -91,9 +91,6 @@ void Scene01::OnSceneRender()
         fbo.Draw(-1);
     else fbo.Draw(1);  
     */
-
-
-
 }
 
 void Scene01::OnImGuiRender()
@@ -292,14 +289,17 @@ Texture2D Scene01::post_bloom(Texture2D pic)
     ID3D11Device* m_pd3dDevice = global::GetGraphicI().m_pDevice.Get();
     auto context = global::GetGraphicI().m_pDeviceContext.Get();  
     D3D11_TEXTURE2D_DESC pDesc;
-    pic.GetTexture()->GetDesc(&pDesc); 
-    Texture2D res(m_pd3dDevice, pic.GetWidth(), pic.GetHeight(), pDesc.Format);
+    pic.GetTexture()->GetDesc(&pDesc);
+    //down sample
+    int w = pic.GetWidth()/2, h = pic.GetHeight()/2;
+    Texture2D res(m_pd3dDevice, w, h, pDesc.Format);
     static EffectHelper effect;
     static bool initflag = false;
     if(!initflag)
     {
         initflag = true;
         effect.CreateShaderFromFile("CS", L"HLSL\\bloom.hlsl", m_pd3dDevice, "main", "cs_5_0", nullptr, nullptr);
+        effect.CreateShaderFromFile("DOWNSAMPLE", L"HLSL\\downsample.hlsl", m_pd3dDevice, "main", "cs_5_0", nullptr, nullptr);
         EffectPassDesc pass;
         pass.nameVS = "";
         pass.nameGS = "";
@@ -308,17 +308,26 @@ Texture2D Scene01::post_bloom(Texture2D pic)
         pass.nameHS = "";
         pass.nameCS = "CS";
         effect.AddEffectPass("CSPASS", m_pd3dDevice, &pass);
+        pass.nameCS = "DOWNSAMPLE";
+        effect.AddEffectPass("downsample", m_pd3dDevice, &pass);
 
     }        
-    Texture2D ping(m_pd3dDevice,pic.GetWidth(),pic.GetHeight(),pDesc.Format,1, D3D11_BIND_UNORDERED_ACCESS);
-    Texture2D pong(m_pd3dDevice, pic.GetWidth(), pic.GetHeight(), pDesc.Format, 1, D3D11_BIND_UNORDERED_ACCESS);
-    context->CopyResource(ping.GetTexture(),pic.GetTexture());
+    Texture2D ping(m_pd3dDevice,w,h,pDesc.Format,1, D3D11_BIND_UNORDERED_ACCESS);
+    Texture2D pong(m_pd3dDevice, w, h, pDesc.Format, 1, D3D11_BIND_UNORDERED_ACCESS);
+    //下采样环节
+    effect.SetUnorderedAccessByName("output",ping.GetUnorderedAccess());
+    effect.SetShaderResourceByName("input",pic.GetShaderResource());
+    effect.SetSamplerStateByName("g_SamLinear",RenderStates::SSPointClamp.Get());
+    effect.GetEffectPass("downsample")->Apply(context);
+    context->Dispatch(w / 32, h / 18, 1);
+   //交替模糊环节
+    effect.SetUnorderedAccessByName("output", nullptr);
     effect.SetUnorderedAccessByName("ping",ping.GetUnorderedAccess());
     effect.SetUnorderedAccessByName("pong", pong.GetUnorderedAccess());
     for (int i = 0; i < 6; ++i) {
             effect.GetConstantBufferVariable("horizontal")->SetUInt(i % 2 == 0); 
             effect.GetEffectPass("CSPASS")->Apply(context);
-            context->Dispatch(pic.GetWidth() / 32, ping.GetHeight() / 18,1);
+            context->Dispatch(w / 32, h / 18,1);
     }
     context->CopyResource(res.GetTexture(), pong.GetTexture());
     return res;

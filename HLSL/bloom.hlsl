@@ -84,8 +84,8 @@ const float weight[10] = float[] (
 
 
 
-RWTexture2D<float4> ping;
-RWTexture2D<float4> pong;
+RWTexture2D<float4> ping : register(u1);
+RWTexture2D<float4> pong : register(u2);
 
 uint horizontal;
 
