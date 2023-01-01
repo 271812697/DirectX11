@@ -499,6 +499,7 @@ namespace component {
 
 	component::Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<UINT32>& indices)
 	{
+		CreateBuffers(vertices, indices);
 	}
 
 	component::Mesh::Mesh(const std::shared_ptr<Mesh>& mesh_asset)
@@ -519,5 +520,9 @@ namespace component {
 	{
 		static component::Mesh mesh(component::Primitive::Quad2D);
 		mesh.Draw();
+	}
+	void Mesh::SetMaterialID(UINT mid) const
+	{
+		material_id = mid;
 	}
 }

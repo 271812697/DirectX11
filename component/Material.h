@@ -55,8 +55,53 @@ namespace component {
 		Material(asset_ref<Material>s): Material(*s) {
 
 		}
-		Material(std::shared_ptr<asset::Shader>s) {
+		Material(std::shared_ptr<asset::Shader>s,bool pbr_mat=false) {
 			SetShader(s);
+			if (shader != nullptr&& pbr_mat) {
+				shader->SetVal("sample_albedo",false);
+				shader->SetVal("sample_normal", false);
+				shader->SetVal("sample_metallic", false);
+				shader->SetVal("sample_roughness", false);
+				shader->SetVal("sample_ao", false);
+				shader->SetVal("sample_emission", false);
+				shader->SetVal("sample_displace", false);
+				shader->SetVal("sample_opacity", false);
+				shader->SetVal("sample_lightmap", false);
+				shader->SetVal("sample_anisotan", false);
+
+				// shared properties
+				shader->SetVal("albedo",DirectX::XMFLOAT4(1.0,1.0,1.0,1.0));
+				shader->SetVal("roughness", 1.0f);
+				shader->SetVal("ao", 0.5f);
+				shader->SetVal("emission", DirectX::XMFLOAT4(0.0,0.0,0.0,1.0));
+				shader->SetVal("uv_scale",DirectX::XMFLOAT2(1.0,1.0));
+				shader->SetVal("alpha_mask",0.0f);
+				// standard model
+				shader->SetVal("metalness", 0.0f);                    // metalness
+				shader->SetVal("specular", 0.5f);                    // specular reflectance ~ [0.35, 1]
+				shader->SetVal("anisotropy", 0.0f);                    // anisotropy ~ [-1, 1]
+				shader->SetVal("aniso_dir", DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f));  // anisotropy direction
+
+				// refraction model
+				shader->SetVal("transmission", 0.0f);                    // transmission
+				shader->SetVal("thickness", 2.0f);                    // thickness
+				shader->SetVal("ior", 1.5f);                    // index of refraction (IOR)
+				shader->SetVal("transmittance", DirectX::XMFLOAT3(1.0f,1.0f,1.0f));              // transmittance color
+				shader->SetVal("tr_distance", 4.0f);                    // transmission distance
+				shader->SetVal("volume_type", 0U);                      // volume type, 0 = uniform sphere, 1 = cube/box/glass
+
+				// cloth model
+				shader->SetVal("sheen_color", DirectX::XMFLOAT3(1.0f,1.0f,1.0f));              // sheen color
+				shader->SetVal("subsurface_color", DirectX::XMFLOAT3(0.0f,0.0f,0.0f));              // subsurface color
+
+				// additive clear coat layer
+				shader->SetVal("clearcoat", 0.0f);                    // clearcoat
+				shader->SetVal("clearcoat_roughness", 0.0f);                    // clearcoat roughness
+
+				// shading model switch
+				shader->SetVal("model", DirectX::XMUINT2(1, 0));             // uvec2 model
+
+			}
 		}
 		Material() = default;
 		void SetShader(std::shared_ptr<asset::Shader>s) {

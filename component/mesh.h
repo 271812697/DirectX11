@@ -73,6 +73,6 @@ namespace component {
 
         // this field is only used by meshes that are loaded from external models
         mutable UINT material_id;
-        //void SetMaterialID(UINT mid) const;
+        void SetMaterialID(UINT mid) const;
     };
 }

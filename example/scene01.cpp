@@ -17,7 +17,7 @@ void Scene01::Init()
     resource_manager.Add(07, MakeAsset<asset::Shader>("HLSL\\post_process01.hlsl"));
 
 	resource_manager.Add(03, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(1)));
-	resource_manager.Add(04, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(2)));
+	resource_manager.Add(04, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(2),true));
     resource_manager.Add(06, MakeAsset<component::Material>(resource_manager.Get<asset::Shader>(5)));
 	sphere = CreateEntity("sphere");
 	sphere.AddComponent<component::Mesh>(component::Primitive::Sphere);
@@ -25,6 +25,8 @@ void Scene01::Init()
     if (auto& mat = sphere.AddComponent<component::Material>(resource_manager.Get<component::Material>(04));true) {
 		SetupMaterial(mat,01);
 	}
+    mingyue = CreateEntity("mingyue");
+    mingyue.AddComponent<component::Model>("res/Zhaolinger/Hero_Zhaolinger/Hero_Zhaolinger.fbx", component::Quality::High, true);
 	sky= CreateEntity("skybox");
 	sky.AddComponent<component::Mesh>(component::Primitive::Sphere);
 	if (auto& mat = sky.AddComponent<component::Material>(resource_manager.Get<component::Material>(03)); true) {
@@ -67,7 +69,11 @@ void Scene01::OnSceneRender()
 	sky.GetComponent<component::Mesh>().Draw();
     
     sphere.GetComponent<component::Material>().Bind();
-    sphere.GetComponent<component::Mesh>().Draw();
+   // sphere.GetComponent<component::Mesh>().Draw();
+    auto& mesh =mingyue.GetComponent<component::Model>().meshes;
+    for (auto& ms : mesh) {
+        ms.Draw();
+    }
 
     bloomsphere.GetComponent<component::Material>().Bind();
     bloomsphere.GetComponent<component::Mesh>().Draw();

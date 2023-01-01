@@ -5,3 +5,5 @@
 #include"light.h"
 #include"Camera.h"
 #include"CameraController.h"
+#include"animator.h"
+#include"model.h"
